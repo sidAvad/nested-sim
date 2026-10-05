@@ -13,6 +13,8 @@ Name map between the 8-compartment model write-up (PDF) and the binary:
     PDF Tes (activation peak)    <-> binary Tmax
 """
 
+import math
+
 # 24 inferred parameters + HR, with the binary's prior bounds (README_sim.md).
 THETA_BOUNDS = {
     "Emax_LV": (0.5, 5.0),
@@ -87,3 +89,20 @@ def sample_theta(rng, n=None):
     def one():
         return {k: float(rng.uniform(lo, hi)) for k, (lo, hi) in THETA_BOUNDS.items()}
     return one() if n is None else [one() for _ in range(n)]
+
+
+# Parameters sampled log-uniformly by the Cv8SimApp training simsets
+# (simset_gen params_to_transform = (Emax_RV, Eap, Rap)).
+LOG_SAMPLED = ("Emax_RV", "Eap", "Rap")
+
+
+def sample_theta_benchmark(rng):
+    """One theta draw as in the binary training sets: uniform within THETA_BOUNDS,
+    log-uniform for LOG_SAMPLED (the binary's Sobol/uniform mix is replaced by
+    plain uniform draws)."""
+    th = {}
+    for k, (lo, hi) in THETA_BOUNDS.items():
+        u = rng.uniform()
+        th[k] = float(math.exp(math.log(lo) + u * (math.log(hi) - math.log(lo)))) if k in LOG_SAMPLED \
+            else float(lo + u * (hi - lo))
+    return th

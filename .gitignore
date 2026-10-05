@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+# large binary reference run (regenerable on palladium, see README)
+ref/ref_nt4000.h5

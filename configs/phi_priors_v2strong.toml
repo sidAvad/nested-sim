@@ -1,0 +1,175 @@
+# Priors for the high-fi extra parameters phi  (version v2-strong, 2026-10-05; v2 with deliberately exaggerated ranges,
+# NOT realistic: the second misspecification level; used by theta_bias v2strong_block).
+# Systemic tau_L raised to 600-2000 ms: with Zc_s up to 0.2*Ras a 300 ms floor
+# let the post-systolic rebound artifact back in (p99 13 mmHg).
+# v2 vs v1 (configs/phi_priors_v1.toml): Zc_s/Ras 0.02-0.05 -> 0.04-0.10 and
+# tau_L(sys) 100-1000 -> 300-1000 ms (matched real pulse pressure: real 49,
+# high-fi v1 36, low-fi 24 mmHg; tau_L >= 300 avoids the post-systolic dip);
+# k_av kept at 0.1-0.5 (widening to 0.8 lowered the matched RA double-hump
+# share from 0.46 = real to 0.35); valve inertance below 5 mmHg*ms^2/mL set
+# to 0 (stiff, negligible effect).
+#
+# Units: resistances/impedances mmHg*ms/mL, inertances mmHg*ms^2/mL,
+# pressures mmHg, frequency Hz, times ms. Off values live in nested_sim/phi.py.
+#
+# Each entry draws from `dist` ("uniform" | "loguniform") on [low, high], then
+# maps the draw to the physical value:
+#   times = "<name>"    value = draw * <name>; <name> is a theta parameter, an
+#                       earlier phi (full alpha = 1 value), or "off" (the low-fi
+#                       value of this phi)
+#   form = "damping"    draw is the valve damping ratio zeta_v and
+#                       value = R^2 / (4 zeta_v^2 E), with R, E named entries
+#   max = x             cap on the physical value
+#   zero_below = x      physical values below x are set to the off value
+#   interp = "inverse"  interpolate 1/x along alpha (fn_cath, off = +inf)
+#   interp = "none"     nuisance: use the full draw at any alpha > 0 (e.g. the
+#                       respiratory rate, which has no effect while the
+#                       respiratory amplitude is 0); alpha = 0 still gives off
+#
+# Ranges come from scripts/prior_sweep.py + scripts/prior_proposal.py on 300
+# prior theta (2026-10-01); see README "phi priors".
+
+# --- freed low-fi resistances: low-fi value x [0.5, 2] ---
+[Rmv]
+dist = "loguniform"
+low = 0.25
+high = 4.0
+times = "off"
+
+[Rav]
+dist = "loguniform"
+low = 0.25
+high = 4.0
+times = "off"
+
+[Rtv]
+dist = "loguniform"
+low = 0.25
+high = 4.0
+times = "off"
+
+[Rpv]
+dist = "loguniform"
+low = 0.25
+high = 4.0
+times = "off"
+
+[Rvs]
+dist = "loguniform"
+low = 0.25
+high = 4.0
+times = "off"
+
+[Rvp]
+dist = "loguniform"
+low = 0.25
+high = 4.0
+times = "off"
+
+# --- 4-element Windkessel (L parallel to Zc) ---
+# Zc as a fraction of the arterial resistance; L via tau_L = L / Zc.
+[Zc_s]
+dist = "loguniform"
+low = 0.06
+high = 0.2
+times = "Ras"
+
+[L_s]
+dist = "loguniform"
+low = 600.0
+high = 2000.0
+times = "Zc_s"
+
+[Zc_p]
+dist = "loguniform"
+low = 0.1
+high = 0.3
+times = "Rap"
+max = 150.0
+
+[L_p]
+dist = "loguniform"
+low = 200.0
+high = 2000.0
+times = "Zc_p"
+
+# --- semilunar valve inertance, via damping ratio of valve + ventricle ---
+[Lv_av]
+dist = "loguniform"
+low = 0.7
+high = 2.0
+form = "damping"
+R = "Rav"
+E = "Emax_LV"
+zero_below = 5.0   # Lv < 5 changes pressures by < ~0.15 mmHg but is very stiff
+
+[Lv_pv]
+dist = "loguniform"
+low = 0.7
+high = 2.0
+form = "damping"
+R = "Rpv"
+E = "Emax_RV"
+zero_below = 5.0
+
+# --- atrioventricular-plane coupling (ventricle emptying enlarges its atrium) ---
+# Matched comparison with real beats (scripts/wedge_matched.py): RA double-hump
+# share 0.17 -> 0.33-0.36 for k = 0.3-0.5 (real 0.46), amplitude unchanged.
+[k_av_l]
+dist = "uniform"
+low = 0.3
+high = 0.8
+
+[k_av_r]
+dist = "uniform"
+low = 0.3
+high = 0.8
+
+# Wedge observation of the Pvp channel (w_wedge, tau_wedge) has no prior: it is
+# implemented but parked (does not make the channel more real-like on its own).
+
+# --- respiration (intrathoracic pressure swing; first order removed in output) ---
+# Calibrated against real within-patient beat-to-beat statistics
+# (scripts/resp_experiment.py): Prv/Pap level and shape variation match at
+# ~3-4 mmHg, Pra at ~1 mmHg; the range spans both.
+[resp_amp]
+dist = "uniform"
+low = 3.0
+high = 8.0
+
+[resp_rate]   # breaths/min; the breath is a whole number of beats
+dist = "uniform"
+low = 10.0
+high = 20.0
+interp = "none"
+
+[resp_phase]  # which beat of the breath is reported
+dist = "uniform"
+low = 0.0
+high = 1.0
+interp = "none"
+
+# --- measurement: the 4 cath lab channels (Prv, Pra, Pap, Pvp), one catheter ---
+# Scaled by alpha_meas (default 0 = off), not alpha. Real beats show no white
+# noise or ringing (scripts/real_vs_sim.py), so these are optional ablation axes,
+# not part of the main misspecification gap.
+[fn_cath]
+dist = "uniform"
+low = 10.0
+high = 25.0
+interp = "inverse"
+
+[zeta_cath]
+dist = "uniform"
+low = 0.15
+high = 0.6
+
+[offset_cath]   # zero offset b (leveling error)
+dist = "uniform"
+low = -3.0
+high = 3.0
+
+[sigma_cath]    # white noise std per 201-grid sample
+dist = "uniform"
+low = 0.0
+high = 0.3

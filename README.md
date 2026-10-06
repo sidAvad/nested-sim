@@ -209,6 +209,24 @@ pulse pressure realistic (45 vs real 49) but lowered the matched RA
 double-hump share (0.37 vs v2 0.46 = real). Realism of v2 (matched to real
 beats): pulse pressure 48 vs 49, RA double-hump 0.46 vs 0.46.
 
+## Datasets (generated 2026-10-05/06, commit 0907e25, `scripts/make_datasets.py`)
+
+palladium `~/outputs/nested-sim/data/<set>/` (66 GB), Cv8SimApp-export layout
+(batch_XXXX.h5 + manifest.json; waves 24 continuous + 4 valve + t, float32;
+summaries; parameters with binary names incl. fixed; phi for high-fi).
+
+| set | simulator | sims | failed draws (replaced) |
+|---|---|---|---|
+| lofi_train | low-fi | 990,000 | 17,451 (1.7%) |
+| lofi_test / hifi_v2_test / hifi_v2strong_test | paired, same theta | 10,000 each | 397 theta dropped (any of the 3 failed) |
+| hifi_v2_target | high-fi v2 (realistic) | 90,000 | 2,023 (2.2%) |
+| hifi_v2strong_target | high-fi v2-strong (exaggerated) | 90,000 | 3,157 (3.4%) |
+
+Target pools are meant to be used unlabeled in training; their labels are
+stored for evaluation. Median pulse pressure: low-fi 21, v2 45, v2-strong 65.
+Normalisation stats in the cv-* repos come from the binary 10M set; recompute
+from lofi_train if a method needs them (e.g. cv-sbi-sim scripts/compute_stats.py).
+
 ## Tests
 
 `tests/` (pytest; on palladium: `.venv/bin/python -m pytest -n 128 --runslow tests`,
@@ -237,7 +255,7 @@ TODO, in order:
 1. (done) Tests T1-T7 + new-mechanism tests under `tests/`.
 2. Dataset generation script (theta, phi, alpha, seed, dense raw + measured
    waves, 201-pt inputs + scalars), parallel on palladium.
-3. Git repo + palladium clone (currently rsync copies; local is the source).
+3. (done) Git repo github.com/sidAvad/nested-sim; palladium ~/projects/nested-sim is a read-only deploy-key clone.
 4. Optional: cv8.jl / odesolve.jl to close the 2 window-offset beats and EDP.
 5. Optional: mimic sequential (pullback) recording - build each sample's
    channels from different beats of one `simulate_breath` breath (Pra + Pvp

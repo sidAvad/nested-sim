@@ -224,8 +224,16 @@ summaries; parameters with binary names incl. fixed; phi for high-fi).
 
 Target pools are meant to be used unlabeled in training; their labels are
 stored for evaluation. Median pulse pressure: low-fi 21, v2 45, v2-strong 65.
-Normalisation stats in the cv-* repos come from the binary 10M set; recompute
-from lofi_train if a method needs them (e.g. cv-sbi-sim scripts/compute_stats.py).
+Normalisation: use `lofi_train/norm_stats.json` (scripts/compute_norm_stats.py,
+100k sims, cv-* format plus a "scalars" section) for every method and test set.
+The cv-* repos' norm_stats.json (binary 10M set) does not fit this data: the
+binary simset sampled 18 parameters in log space (50/50 Sobol/uniform) and kept
+only 13.6% of draws (timing + "compatible with life" filters, simset.jl), while
+these sets use the plain prior box (log-uniform only for Emax_RV, Eap, Rap) and
+no filter, so many states are non-physiological (pressure stds 1.5-2x larger).
+Valid for the sim-to-sim benchmark (train and test share the prior); revisit if
+results look washed out or need to match the filtered support (option: draw
+theta from the binary simset's accepted parameters).
 
 ## Tests
 

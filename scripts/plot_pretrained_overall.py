@@ -71,8 +71,8 @@ def main():
     ax.tick_params(colors=MUTED, labelsize=8)
     handles = [plt.Rectangle((0, 0), 1, 1, fc=c, alpha=0.6, label=lab) for _, lab, c in SETS]
     ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.42, -0.14), ncol=3, frameon=False, fontsize=9)
-    ax.set_title("Posterior z-scores pooled over all parameters, by model and test set (24 params x 1,000 sims each)",
-                 fontsize=11, loc="left", color=INK)
+    ax.set_title("Posterior z-scores pooled over all 24 parameters, by model and test set\n"
+                 "(24 params x 1,000 sims per violin)", fontsize=11, loc="left", color=INK, pad=22)
     fig.tight_layout()
     out = ROOT / "zscore_overall.png"
     fig.savefig(out, dpi=130)

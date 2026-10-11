@@ -10,6 +10,8 @@ norm_stats.json, and run through the repos' own loaders and inference functions:
   npe-noise      cv-dann-sbi exp-npe-noise-baseline_cvdannsbi   x -> encoder -> flow
   spin-pathD     cv-sbi-spin exp-v3d_spin (ep380)  x -> G_sr -> encoder_real -> flow_real
   spin-pathA     cv-sbi-spin exp-v3d_spin (ep380)  x -> G_rs -> encoder_sim -> flow_sim
+  npe-gibbs      cv-dann-sbi exp-gibbs-baseline_cvdannsbi  [encoder(x), w_embed(log w)] -> flow,
+                 at --gibbs-w (default w_support = 5.374, as its own real-patient eval)
 
 Per test set it saves z = (post_mean - true)/post_std and
 shrinkage = 1 - post_var/prior_var (uniform prior variance, as in
@@ -35,6 +37,7 @@ METHODS = {
     "npe-noise": ("cv-dann-sbi", "exp-npe-noise-baseline_cvdannsbi", None),
     "spin-pathD": ("cv-sbi-spin", "exp-v3d_spin", "20260908-133641_calib_ep380"),
     "spin-pathA": ("cv-sbi-spin", "exp-v3d_spin", "20260908-133641_calib_ep380"),
+    "npe-gibbs": ("cv-dann-sbi", "exp-gibbs-baseline_cvdannsbi", None),
 }
 WAVES = ["Prv", "Pra", "Pvp", "Pap"]  # WAVE_KEYS_REAL / WAVE_KEYS_REDUCED order
 
@@ -77,6 +80,7 @@ def main():
     ap.add_argument("--n", type=int, default=1000)
     ap.add_argument("--n-samples", type=int, default=1000)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--gibbs-w", type=float, default=5.373859245922884)
     a = ap.parse_args()
 
     repo, run, ckpt = METHODS[a.method]
@@ -87,7 +91,15 @@ def main():
     lo_t, hi_t, _ = ec.load_prior_bounds()
     keys = list(ec.PARAM_KEYS_INFER)
 
-    if repo == "cv-dann-sbi":
+    if a.method == "npe-gibbs":
+        import eval_gibbs_sweep as eg  # noqa: E402
+        from train_gibbs_npe import WEmbed  # noqa: E402
+        sys.modules["__main__"].WEmbed = WEmbed  # w_embed.pt pickled WEmbed from train_gibbs_npe's __main__
+        enc, flow, wemb, _, _ = eg.load_gibbs_models(eg.resolve_gibbs_ckpt(run), device)
+        infer = lambda pats: eg.run_posterior_inference_w(  # noqa: E731
+            enc, flow, wemb, torch.stack([p["x_avg"] for p in pats]), np.log(a.gibbs_w), lo_t, hi_t,
+            a.n_samples, device)
+    elif repo == "cv-dann-sbi":
         m = ec.load_models(run, device)
         infer = lambda pats: ec.run_posterior_inference(  # noqa: E731
             m["encoder"], m["flow_net"], pats, lo_t, hi_t, a.n_samples, device)
@@ -100,7 +112,7 @@ def main():
         else:
             infer = lambda pats: ec.run_posterior_inference(  # noqa: E731
                 m["encoder"], m["flow_net"], m["G_rs"], m["apply_G"], pats, lo_t, hi_t, a.n_samples, device)
-    print(f"{a.method}: {run} ckpt={ckpt} stats={ec.STATS_PATH} device={device}", flush=True)
+    print(f"{a.method}: {run} ckpt={ckpt} gibbs_w={a.gibbs_w if a.method == 'npe-gibbs' else None} stats={ec.STATS_PATH} device={device}", flush=True)
 
     lo, hi = lo_t.numpy(), hi_t.numpy()
     prior_var = (hi - lo) ** 2 / 12.0

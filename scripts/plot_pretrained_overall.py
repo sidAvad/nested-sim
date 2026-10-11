@@ -6,8 +6,10 @@ high-fi exaggerated) of every z-score for that model and test set (24 params x
 the Gaussian-approximate 90% interval (|z| < 1.645; ideal 90%). z clipped to
 +-CLIP for display.
 
-Usage: python scripts/plot_pretrained_overall.py
+Usage: python scripts/plot_pretrained_overall.py [--with-gibbs]
+  --with-gibbs adds a Gibbs NPE row and writes zscore_overall_with_gibbs.png instead.
 """
+import argparse
 from pathlib import Path
 
 import matplotlib
@@ -31,18 +33,30 @@ def pooled(method, set_name):
     return np.concatenate([d[f"{k}_z"] for k in d["param_keys"]])
 
 
+GIBBS = ("npe-gibbs", "Gibbs NPE (w=5.37)")
+
+
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--with-gibbs", action="store_true")
+    a = ap.parse_args()
+    methods = METHODS + [GIBBS] if a.with_gibbs else METHODS
     row_h, gap = 1.0, 0.35
     lane = row_h / len(SETS)
-    fig, ax = plt.subplots(figsize=(11, 1.25 * len(METHODS) + 1.8))
+    fig, ax = plt.subplots(figsize=(11, 1.25 * len(methods) + 1.8))
+    table = []
     yticks = []
-    for r, (m, label) in enumerate(METHODS):
+    for r, (m, label) in enumerate(methods):
         top = r * (row_h + gap)
         yticks.append(top + row_h / 2)
         if r % 2 == 0:
             ax.axhspan(top - gap / 2, top + row_h + gap / 2, color=GRID, alpha=0.35, lw=0, zorder=0)
         for j, (s, _, color) in enumerate(SETS):
             z = pooled(m, s)
+            d = np.load(ROOT / m / s / "zscore_shrinkage_data.npz", allow_pickle=True)
+            sh = np.concatenate([d[f"{k}_shrinkage"] for k in d["param_keys"]])
+            table.append((label, s, np.median(d["accept_rate"]), np.median(np.abs(z)), np.mean(np.abs(z) > 2),
+                          np.mean(np.abs(z) < 1.645), np.median(sh)))
             y = top + (j + 0.5) * lane
             parts = ax.violinplot([np.clip(z, -CLIP, CLIP)], positions=[y], vert=False, widths=lane * 0.95,
                                   showmedians=True, showextrema=False)
@@ -56,8 +70,8 @@ def main():
                     family="monospace")
     for x, ls in ((0, "--"), (2, ":"), (-2, ":")):
         ax.axvline(x, color=MUTED, lw=0.8, ls=ls, zorder=1)
-    n = len(METHODS)
-    ax.set_yticks(yticks, [lab for _, lab in METHODS], fontsize=10)
+    n = len(methods)
+    ax.set_yticks(yticks, [lab for _, lab in methods], fontsize=10)
     ax.set_ylim(n * (row_h + gap) - gap / 2, -gap / 2)
     ax.set_xlim(-CLIP - 0.5, CLIP + 6.0)
     ax.set_xticks(np.arange(-10, 11, 2))
@@ -74,8 +88,11 @@ def main():
     ax.set_title("Posterior z-scores pooled over all 24 parameters, by model and test set\n"
                  "(24 params x 1,000 sims per violin)", fontsize=11, loc="left", color=INK, pad=22)
     fig.tight_layout()
-    out = ROOT / "zscore_overall.png"
+    out = ROOT / ("zscore_overall_with_gibbs.png" if a.with_gibbs else "zscore_overall.png")
     fig.savefig(out, dpi=130)
+    print("| model | test set | accept | med|z| | |z|>2 | cov90 | med shrinkage |\n|---|---|---|---|---|---|---|")
+    for label, s, acc, mz, gt2, cov, sh in table:
+        print(f"| {label} | {s} | {acc:.2f} | {mz:.2f} | {gt2:.1%} | {cov:.1%} | {sh:.2f} |")
     print("wrote", out)
 
 

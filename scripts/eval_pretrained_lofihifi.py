@@ -50,6 +50,12 @@ METHODS = {
     "spin-pathD-lofihifi": ("cv-sbi-spin", "exp-v3d_spin_nestedsim-lofihifi_300ksims-3kreal-400ep", None),
     "spin-pathA-lofihifi": ("cv-sbi-spin", "exp-v3d_spin_nestedsim-lofihifi_300ksims-3kreal-400ep", None),
     "npe-gibbs-lofihifi": ("cv-dann-sbi", "exp-gibbs-baseline_nestedsim-lofi_cvdannsbi_300k", None),
+    # --clamp-info-gap --freeze-scalars rerun (fixes the inverted-gap anomaly found in the
+    # uncorrected run above -- see experiments.csv-equivalent discussion this session,
+    # 2026-10-20). checkpoint_ts=None resolves to the final untagged epoch-415 folder
+    # (resolve_checkpoint_dir excludes the tagged _calib_ep* snapshots by default).
+    "spin-pathD-lofihifi-clamped": ("cv-sbi-spin", "exp-v3d_spin_nestedsim-lofihifi_300k3kreal_clamped", None),
+    "spin-pathA-lofihifi-clamped": ("cv-sbi-spin", "exp-v3d_spin_nestedsim-lofihifi_300k3kreal_clamped", None),
 }
 WAVES = ["Prv", "Pra", "Pvp", "Pap"]
 
@@ -129,7 +135,7 @@ def main():
     else:
         import eval_common_v3 as ec3  # noqa: E402
         m = ec3.load_models(run, device, checkpoint_ts=ckpt)
-        if a.method == "spin-pathD-lofihifi":
+        if a.method.startswith("spin-pathD"):
             infer = lambda pats: ec3.run_posterior_inference_sr_direct(  # noqa: E731
                 m["encoder_real"], m["flow_real"], m["G_sr"], m["apply_G"], pats, lo_t, hi_t, a.n_samples, device)
         else:

@@ -97,7 +97,7 @@ def main():
     hrs = [d[0] for d in true_data]
     phi_obs = phi_raw(np.stack([d[1] for d in true_data]), np.stack([d[2] for d in true_data]), metric)
 
-    header = ["method", "n_ok", "whitened_rmse", "Prv_rmse", "Pra_rmse", "Pvp_rmse", "Pap_rmse",
+    header = ["method", "n_ok", "whitened_rmse", "whitened_mae", "Prv_rmse", "Pra_rmse", "Pvp_rmse", "Pap_rmse",
               "map_err", "sbp_err", "dbp_err", "logsv_err"]
     print(" ".join(f"{h:>14}" for h in header))
     rows = []
@@ -112,7 +112,12 @@ def main():
         pred_scal = np.stack([r[1] for r, o in zip(results, ok) if o])
         phi_pred = phi_raw(pred_waves, pred_scal, metric)
         phi_true_ok = phi_obs[ok]
-        whitened_rmse = float(np.sqrt(np.mean((phi_pred - phi_true_ok) ** 2)))
+        resid = phi_pred - phi_true_ok
+        whitened_rmse = float(np.sqrt(np.mean(resid ** 2)))
+        # Overall MAE, pooled over every whitened channel (waveform + scalar) and case --
+        # one number on a common scale, unlike the raw mmHg/log-unit columns below which
+        # aren't comparable to each other.
+        whitened_mae = float(np.mean(np.abs(resid)))
 
         true_waves_ok = np.stack([true_data[i][1] for i in range(len(pick)) if ok[i]])
         wave_rmse = np.sqrt(np.mean((pred_waves - true_waves_ok) ** 2, axis=(0, 2)))
@@ -120,9 +125,9 @@ def main():
         true_scal_ok = np.stack([true_data[i][2] for i in range(len(pick)) if ok[i]])
         scal_err = np.sqrt(np.mean((pred_scal - true_scal_ok) ** 2, axis=0))
 
-        row = [label, n_ok, whitened_rmse, *wave_rmse.tolist(), *scal_err.tolist()]
+        row = [label, n_ok, whitened_rmse, whitened_mae, *wave_rmse.tolist(), *scal_err.tolist()]
         rows.append(row)
-        print(f"{label:>14} {n_ok:>14} {whitened_rmse:>14.3f} " +
+        print(f"{label:>14} {n_ok:>14} {whitened_rmse:>14.3f} {whitened_mae:>14.3f} " +
               " ".join(f"{v:>14.3f}" for v in wave_rmse) + " " +
               " ".join(f"{v:>14.3f}" for v in scal_err))
 

@@ -54,7 +54,7 @@ def main():
     n = len(keys)
     row_h, gap = 1.0, 0.25
     lane = row_h / len(METHODS)
-    fig, ax = plt.subplots(figsize=(11, 0.62 * n + 1.8))
+    fig, ax = plt.subplots(figsize=(12, 0.62 * n + 1.8))
     yticks = []
     for r, k in enumerate(keys):
         top = r * (row_h + gap)
@@ -71,20 +71,21 @@ def main():
                 b.set_edgecolor(color)
                 b.set_alpha(0.6)
             parts["cmedians"].set_color(color)
-            ax.text(CLIP + 0.4, y, f"{np.median(z):+.1f}  {np.mean(np.abs(z) > 2):.0%}", va="center",
+            sh = np.median(data[m][f"{k}_shrinkage"])
+            ax.text(CLIP + 0.4, y, f"{np.median(z):+.1f}  {np.mean(np.abs(z) > 2):.0%}  {sh:.2f}", va="center",
                     fontsize=6.5, color=color)
     for x, ls in ((0, "--"), (2, ":"), (-2, ":")):
         ax.axvline(x, color=MUTED, lw=0.8, ls=ls, zorder=1)
     ax.set_yticks(yticks, keys, fontsize=9)
     ax.set_ylim(n * (row_h + gap) - gap / 2, -gap / 2)  # first row at the top
-    ax.set_xlim(-CLIP - 0.5, CLIP + 3.2)
+    ax.set_xlim(-CLIP - 0.5, CLIP + 4.4)
     ax.set_xticks(np.arange(-10, 11, 2))
     ax.set_xlabel(f"z = (posterior mean - true) / posterior std   (clipped to ±{CLIP:.0f})", fontsize=9, color=MUTED)
     for s in ("top", "right", "left"):
         ax.spines[s].set_visible(False)
     ax.tick_params(axis="y", length=0)
     ax.tick_params(colors=MUTED, labelsize=8)
-    ax.text(CLIP + 0.4, -gap / 2 - 0.15, "median z  |z|>2", fontsize=7, color=MUTED, va="bottom")
+    ax.text(CLIP + 0.4, -gap / 2 - 0.15, "median z  |z|>2  shrinkage", fontsize=7, color=MUTED, va="bottom")
     handles = [plt.Rectangle((0, 0), 1, 1, fc=c, alpha=0.6, label=lab) for _, lab, c in METHODS]
     ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.45, -0.1), ncol=3,
               frameon=False, fontsize=9)

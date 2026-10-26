@@ -23,10 +23,10 @@ import numpy as np  # noqa: E402
 
 ROOT = Path.home() / "results/nested-sim/pretrained_eval_lofihifi"
 METHODS = [("npe-gibbs-lofihifi", "Gibbs NPE", "#2a78d6"),
-           ("npe-baseline-lofihifi", "Vanilla NPE", "#eb6834"),
+           ("spin-pathD-lofihifi", "SPIN v3d Path D", "#9b59b6"),
            ("npe-noise-lofihifi", "NPE + 11dB noise", "#1baf7a"),
-           ("spin-pathA-lofihifi", "SPIN v3d Path A", "#eda100"),
-           ("spin-pathD-lofihifi", "SPIN v3d Path D", "#9b59b6")]
+           ("npe-baseline-lofihifi", "Vanilla NPE", "#eb6834"),
+           ("spin-pathA-lofihifi", "SPIN v3d Path A", "#eda100")]
 SET_LABELS = {"lofi_test": "low-fi (no gap)", "hifi_v2_test": "high-fi realistic",
               "hifi_v2strong_test": "high-fi exaggerated"}
 INK, MUTED, GRID = "#1f1f1e", "#6b6a63", "#e6e5df"

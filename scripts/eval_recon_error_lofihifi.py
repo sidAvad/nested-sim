@@ -37,6 +37,18 @@ NESTED_DATA = HOME / "outputs/nested-sim/data"
 sys.path.insert(0, str(HOME / "results/cv-dann-sbi/scripts"))
 from smc_gibbs_nestedsim import _sim_one, phi_raw, Metric, resolve_gibbs_ckpt, WAVES  # noqa: E402
 
+
+def _safe_sim_one(args):
+    """_sim_one, but some methods' posterior means land outside the simulator's valid
+    domain (e.g. a solver-internal log1p(negative) for an unphysical volume/pressure
+    combination) and raise instead of returning r.success=False -- that's a real
+    reconstruction failure (an invalid point estimate), not a bug in this script, so it's
+    counted the same way as a non-converged simulate() call (returns None)."""
+    try:
+        return _sim_one(args)
+    except Exception:
+        return None
+
 METHODS = [
     ("npe-gibbs-lofihifi", "Gibbs NPE"),
     ("spin-pathD-lofihifi", "SPIN v3d Path D"),
@@ -93,7 +105,7 @@ def main():
         d = np.load(OUT / method / SET_NAME / "zscore_shrinkage_data.npz", allow_pickle=True)
         post_mean = d["post_mean"][: a.n_cases]
         with ProcessPoolExecutor(a.workers) as ex:
-            results = list(ex.map(_sim_one, [(post_mean[i], hrs[i]) for i in range(len(pick))], chunksize=1))
+            results = list(ex.map(_safe_sim_one, [(post_mean[i], hrs[i]) for i in range(len(pick))], chunksize=1))
         ok = np.array([r is not None for r in results])
         n_ok = int(ok.sum())
         pred_waves = np.stack([r[0] for r, o in zip(results, ok) if o])

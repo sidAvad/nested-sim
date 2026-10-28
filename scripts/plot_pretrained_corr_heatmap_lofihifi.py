@@ -1,18 +1,17 @@
-"""R^2 heatmap for the 6-method lofihifi comparison: one row per parameter, one column
-per method, color = R^2 of posterior mean vs true value (coefficient of determination,
-R^2 = 1 - SS_res/SS_tot, *not* squared Pearson r -- this matters here specifically
-because a posterior mean that collapses to a near-constant value regardless of the true
-input (the failure mode plot_pretrained_scatter_lofihifi_6methods.py found for SPIN
-Dual-flow's Cas) scores near 0 or negative on R^2, correctly flagging "no better than
-predicting the mean", whereas Pearson r^2 only measures linear association and is blind
-to that kind of bias.
+"""Pearson-r heatmap for the 6-method lofihifi comparison: one row per parameter, one
+column per method, color = Pearson r of posterior mean vs true value. Naturally bounded
+to [-1, 1] (no clipping needed, unlike R^2) and maps directly onto the usual
+anticorrelated / uninformative / correlated reading: r near -1 means the posterior mean
+moves opposite to truth, r near 0 means no linear relationship (including the "collapsed
+to a near-constant value" failure mode plot_pretrained_scatter_lofihifi_6methods.py found
+for SPIN Dual-flow's Cas), r near +1 means it tracks truth well.
 
 Replaces plot_pretrained_scatter_lofihifi_6methods.py's overlapping per-parameter scatter
 (illegible with 6 methods on one axis) with a single compact summary; use the scatter
 script separately to drill into one specific (parameter, method) cell if a value here
 looks surprising.
 
-Usage: python scripts/plot_pretrained_r2_heatmap_lofihifi.py [--set hifi_v2strong_test]
+Usage: python scripts/plot_pretrained_corr_heatmap_lofihifi.py [--set hifi_v2strong_test]
 """
 import argparse
 from pathlib import Path
@@ -44,10 +43,10 @@ PARAM_ORDER = [
 ]
 
 
-def r2(true, pred):
-    ss_res = np.sum((true - pred) ** 2)
-    ss_tot = np.sum((true - true.mean()) ** 2)
-    return 1.0 - ss_res / ss_tot if ss_tot > 0 else np.nan
+def pearson_r(true, pred):
+    if true.std() == 0 or pred.std() == 0:
+        return np.nan
+    return float(np.corrcoef(true, pred)[0, 1])
 
 
 def main():
@@ -64,14 +63,14 @@ def main():
         pi = param_keys.index(k)
         for j, (m, _) in enumerate(METHODS):
             d = data[m]
-            mat[i, j] = r2(d["true"][:, pi], d["post_mean"][:, pi])
+            mat[i, j] = pearson_r(d["true"][:, pi], d["post_mean"][:, pi])
 
     fig, ax = plt.subplots(figsize=(1.7 * len(METHODS) + 2.2, 0.38 * len(keys) + 1.8))
-    im = ax.imshow(np.clip(mat, -1, 1), cmap="RdYlGn", vmin=-1, vmax=1, aspect="auto")
+    im = ax.imshow(mat, cmap="RdYlGn", vmin=-1, vmax=1, aspect="auto")
     for i in range(len(keys)):
         for j in range(len(METHODS)):
             v = mat[i, j]
-            txt_color = INK if -0.6 < v < 0.85 else "white"
+            txt_color = INK if abs(v) < 0.75 else "white"
             ax.text(j, i, f"{v:.2f}", ha="center", va="center", fontsize=8, color=txt_color)
     ax.set_xticks(range(len(METHODS)), [lab for _, lab in METHODS], fontsize=8, color=MUTED)
     ax.set_yticks(range(len(keys)), keys, fontsize=9, color=INK)
@@ -83,15 +82,15 @@ def main():
     for s in ax.spines.values():
         s.set_visible(False)
     cbar = fig.colorbar(im, ax=ax, fraction=0.035, pad=0.02)
-    cbar.set_label("R² (posterior mean vs true; 1=perfect, 0=no better than predicting\nthe mean, "
-                    "<0=worse than predicting the mean)", fontsize=8, color=MUTED)
-    ax.set_title(f"Posterior mean R² by parameter and method, {SET_LABELS[a.set]}\n"
+    cbar.set_label("Pearson r (posterior mean vs true; -1=anticorrelated, 0=uninformative,\n"
+                    "+1=correlated)", fontsize=8, color=MUTED)
+    ax.set_title(f"Posterior mean Pearson r by parameter and method, {SET_LABELS[a.set]}\n"
                  f"(rows ordered most- to least-identifiable, 1,000 sims per method)",
                  fontsize=11, loc="left", color=INK)
     fig.tight_layout()
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    out = OUT_DIR / f"r2_heatmap_lofihifi_{a.set}.png"
+    out = OUT_DIR / f"corr_heatmap_lofihifi_{a.set}.png"
     fig.savefig(out, dpi=130)
     print("wrote", out)
 

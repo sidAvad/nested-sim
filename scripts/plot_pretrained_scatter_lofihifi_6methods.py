@@ -69,8 +69,12 @@ def main():
             true = d["true"][:, pi]
             post_mean = d["post_mean"][:, pi]
             ax.scatter(true, post_mean, s=5, color=color, alpha=0.35, edgecolors="none", label=label)
-            lo_all.append(min(true.min(), post_mean.min()))
-            hi_all.append(max(true.max(), post_mean.max()))
+            # Robust (percentile-based) axis range -- a handful of degenerate posterior
+            # means (same failure mode that makes some methods' points unsimulatable, see
+            # eval_recon_error_lofihifi.py's n_ok) can otherwise stretch min/max far enough
+            # to hide the bulk's actual behavior.
+            lo_all.append(min(np.percentile(true, 0.5), np.percentile(post_mean, 0.5)))
+            hi_all.append(max(np.percentile(true, 99.5), np.percentile(post_mean, 99.5)))
         lo, hi = min(lo_all), max(hi_all)
         pad = 0.04 * (hi - lo + 1e-9)
         ax.plot([lo - pad, hi + pad], [lo - pad, hi + pad], color=MUTED, lw=0.9, ls="--", zorder=0)

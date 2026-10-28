@@ -1,7 +1,7 @@
 """Reconstruction error for the lofihifi methods on hifi_v2strong_test: forward-simulate
 each method's posterior mean theta through nested_sim.simulate and compare the predicted
 waveform/summary against the actual observed one, in raw physical units (mmHg for
-waveforms/map/sbp/dbp, log-units for logsv -- see load_true). This is a different axis
+waveforms/map/sbp/dbp, mL for sv -- see load_true). This is a different axis
 from the z-score/shrinkage plots (which measure point-estimate accuracy relative to
 posterior width) -- reconstruction error measures point-estimate accuracy relative to
 the observation itself, independent of how confident the posterior claims to be.
@@ -29,11 +29,14 @@ import numpy as np
 
 HOME = Path.home()
 OUT = HOME / "results/nested-sim/pretrained_eval_lofihifi"
-OUT_DIR = HOME / "results/nested-sim/zscore_overall_6methods"
+OUT_DIR = HOME / "results/nested-sim/pretrained_eval_lofihifi/zscore_overall_6methods"
 NESTED_DATA = HOME / "outputs/nested-sim/data"
 
 sys.path.insert(0, str(HOME / "results/cv-dann-sbi/scripts"))
-from smc_gibbs_nestedsim import _sim_one, WAVES  # noqa: E402
+from smc_gibbs_nestedsim import WAVES  # noqa: E402  (also puts nested_sim on sys.path)
+from nested_sim import simulate  # noqa: E402
+from nested_sim.params import from_binary_names  # noqa: E402
+from eval_common import PARAM_KEYS_INFER  # noqa: E402
 
 
 def _safe_sim_one(args):
@@ -43,7 +46,7 @@ def _safe_sim_one(args):
     reconstruction failure (an invalid point estimate), not a bug in this script, so it's
     counted the same way as a non-converged simulate() call (returns None)."""
     try:
-        return _sim_one(args)
+        return _sim_one_raw(args)
     except Exception:
         return None
 
@@ -65,16 +68,32 @@ def manifest_pick(set_name, n, seed):
 
 
 def load_true(set_name, man, idx):
-    """scal = [Pas.mean(), Pas.max(), Pas.min(), log(Vlv range)] -- i.e. map/sbp/dbp
-    (mmHg) and a log-space stroke-volume proxy."""
+    """scal = [Pas.mean(), Pas.max(), Pas.min(), Vlv range] -- i.e. map/sbp/dbp (mmHg)
+    and stroke volume (mL; confirmed equal to summaries/sv up to float precision)."""
     e = man[idx]
     with h5py.File(NESTED_DATA / set_name / e["file"], "r") as f:
         g = f[e["group"]]
         hr = float(g["parameters/HR"][()])
         waves = np.stack([g[f"waves/{k}"][:] for k in WAVES]).astype(np.float64)
         pas, vlv = g["waves/Pas"][:].astype(np.float64), g["waves/Vlv"][:].astype(np.float64)
-        scal = np.array([pas.mean(), pas.max(), pas.min(), np.log(max(vlv.max() - vlv.min(), 1e-6))])
+        scal = np.array([pas.mean(), pas.max(), pas.min(), vlv.max() - vlv.min()])
     return hr, waves, scal
+
+
+def _sim_one_raw(args):
+    """Like smc_gibbs_nestedsim._sim_one, but the 4th scalar is raw stroke volume
+    (mL), not its log -- matches load_true's raw-units scal so the two sides of the
+    MAE comparison are in the same units."""
+    theta_binary_row, hr = args
+    th = from_binary_names(dict(zip(PARAM_KEYS_INFER, theta_binary_row.tolist())))
+    th["HR"] = hr
+    r = simulate(th)
+    if not r.success:
+        return None
+    w = np.stack([r.waves201[c] for c in WAVES])
+    pas, vlv = r.waves201["Pas"], r.waves201["Vlv"]
+    scal = np.array([pas.mean(), pas.max(), pas.min(), vlv.max() - vlv.min()])
+    return w, scal
 
 
 def main():
@@ -92,7 +111,7 @@ def main():
     hrs = [d[0] for d in true_data]
 
     header = ["method", "n_ok", "Prv_mae", "Pra_mae", "Pvp_mae", "Pap_mae", "wave_mae_overall",
-              "map_mae", "sbp_mae", "dbp_mae", "logsv_mae"]
+              "map_mae", "sbp_mae", "dbp_mae", "sv_mae"]
     print(" ".join(f"{h:>16}" for h in header))
     rows = []
     for method, label in METHODS:

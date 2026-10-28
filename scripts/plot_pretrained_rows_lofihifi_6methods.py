@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
 ROOT = Path.home() / "results/nested-sim/pretrained_eval_lofihifi"
-OUT_DIR = Path.home() / "results/nested-sim/zscore_overall_6methods"
+OUT_DIR = ROOT / "zscore_overall_6methods"
 METHODS = [("npe-gibbs-lofihifi", "Gibbs NPE", "#2a78d6"),
            ("spin-pathD-lofihifi", "SPIN Dual-flow (Path D)", "#9b59b6"),
            ("npe-dann-lofihifi", "NPE DANN / WDGRL", "#c0392b"),

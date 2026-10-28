@@ -16,6 +16,13 @@ binary-10M-simset-trained models:
                          (300k lofi sims)  [encoder(x), w_embed(log w)] -> flow,
                          at --gibbs-w (default 5.917, this model's own w_hat --
                          NOT the original binary-set model's 5.374)
+  spin-singleflow-lofihifi  cv-sbi-spin exp-spin-singleflow_nestedsim-lofihifi_300ksims-3kreal-mixup-400ep
+                         (exp/wdgrl-grl single shared-encoder+flow arch, no Path A/D split,
+                         300k lofi sims, 3k hifi "real", mixup, 400ep)
+                         x -> G_rs -> encoder -> flow (only one inference path)
+  npe-dann-lofihifi      cv-dann-sbi exp-dann-wdgrl_nestedsim-lofihifi_cvdannsbi_300ksims-3kreal-400ep
+                         (WDGRL DANN, 300k lofi sims, 3k hifi "real", 400ep)
+                         x -> encoder -> flow
 
 Two things these models need that the original eval_pretrained.py doesn't provide,
 since it was built for binary-set-trained models:
@@ -56,6 +63,8 @@ METHODS = {
     # (resolve_checkpoint_dir excludes the tagged _calib_ep* snapshots by default).
     "spin-pathD-lofihifi-clamped": ("cv-sbi-spin", "exp-v3d_spin_nestedsim-lofihifi_300k3kreal_clamped", None),
     "spin-pathA-lofihifi-clamped": ("cv-sbi-spin", "exp-v3d_spin_nestedsim-lofihifi_300k3kreal_clamped", None),
+    "spin-singleflow-lofihifi": ("cv-sbi-spin", "exp-spin-singleflow_nestedsim-lofihifi_300ksims-3kreal-mixup-400ep", None),
+    "npe-dann-lofihifi": ("cv-dann-sbi", "exp-dann-wdgrl_nestedsim-lofihifi_cvdannsbi_300ksims-3kreal-400ep", None),
 }
 WAVES = ["Prv", "Pra", "Pvp", "Pap"]
 
@@ -132,6 +141,13 @@ def main():
         m = ec.load_models(run, device)
         infer = lambda pats: ec.run_posterior_inference(  # noqa: E731
             m["encoder"], m["flow_net"], pats, lo_t, hi_t, a.n_samples, device)
+    elif a.method == "spin-singleflow-lofihifi":
+        # exp/wdgrl-grl single shared-encoder+flow arch -- plain v1/v2-style
+        # checkpoints (encoder/flow_net/G_rs/G_sr flat under checkpoints/<ts>/),
+        # loaded with cv-sbi-spin's own eval_common (not eval_common_v3).
+        m = ec.load_models(run, device, checkpoint_ts=ckpt)
+        infer = lambda pats: ec.run_posterior_inference(  # noqa: E731
+            m["encoder"], m["flow_net"], m["G_rs"], m["apply_G"], pats, lo_t, hi_t, a.n_samples, device)
     else:
         import eval_common_v3 as ec3  # noqa: E402
         m = ec3.load_models(run, device, checkpoint_ts=ckpt)

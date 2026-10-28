@@ -112,39 +112,54 @@ def main():
 
     header = ["method", "n_ok", "Prv_mae", "Pra_mae", "Pvp_mae", "Pap_mae", "wave_mae_overall",
               "map_mae", "sbp_mae", "dbp_mae", "sv_mae"]
-    print(" ".join(f"{h:>16}" for h in header))
-    rows = []
+
+    # Pass 1: simulate every method's posterior mean, cache per-case (waves, scal, ok) --
+    # needed both for each method's own-subset numbers and for the common-subset ones below.
+    per_method = {}
     for method, label in METHODS:
         d = np.load(OUT / method / SET_NAME / "zscore_shrinkage_data.npz", allow_pickle=True)
         post_mean = d["post_mean"][: a.n_cases]
         with ProcessPoolExecutor(a.workers) as ex:
             results = list(ex.map(_safe_sim_one, [(post_mean[i], hrs[i]) for i in range(len(pick))], chunksize=1))
         ok = np.array([r is not None for r in results])
+        per_method[method] = (label, results, ok)
+
+    def mae_row(label, results, ok):
         n_ok = int(ok.sum())
         pred_waves = np.stack([r[0] for r, o in zip(results, ok) if o])
         pred_scal = np.stack([r[1] for r, o in zip(results, ok) if o])
-
         true_waves_ok = np.stack([true_data[i][1] for i in range(len(pick)) if ok[i]])
         wave_mae = np.mean(np.abs(pred_waves - true_waves_ok), axis=(0, 2))  # per channel
         wave_mae_overall = float(wave_mae.mean())
-
         true_scal_ok = np.stack([true_data[i][2] for i in range(len(pick)) if ok[i]])
         scal_mae = np.mean(np.abs(pred_scal - true_scal_ok), axis=0)
+        return [label, n_ok, *wave_mae.tolist(), wave_mae_overall, *scal_mae.tolist()]
 
-        row = [label, n_ok, *wave_mae.tolist(), wave_mae_overall, *scal_mae.tolist()]
-        rows.append(row)
-        print(f"{label:>16} {n_ok:>16} " +
-              " ".join(f"{v:>16.2f}" for v in wave_mae) + f" {wave_mae_overall:>16.2f} " +
-              " ".join(f"{v:>16.2f}" for v in scal_mae))
+    def print_and_write(rows, out_path):
+        print(" ".join(f"{h:>16}" for h in header))
+        for row in rows:
+            print(f"{row[0]:>16} {row[1]:>16} " + " ".join(f"{v:>16.2f}" for v in row[2:]))
+        OUT_DIR.mkdir(parents=True, exist_ok=True)
+        with open(out_path, "w", newline="") as f:
+            wtr = csv.writer(f)
+            wtr.writerow(header)
+            wtr.writerows([[v if isinstance(v, str) else (int(v) if i == 1 else round(float(v), 2))
+                            for i, v in enumerate(row)] for row in rows])
+        print("wrote", out_path)
 
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = OUT_DIR / f"recon_error_{SET_NAME}.csv"
-    with open(out_path, "w", newline="") as f:
-        wtr = csv.writer(f)
-        wtr.writerow(header)
-        wtr.writerows([[v if isinstance(v, str) else (int(v) if i == 1 else round(float(v), 2))
-                        for i, v in enumerate(row)] for row in rows])
-    print("wrote", out_path)
+    # Own-subset numbers (each method scored only on its own successfully-simulated cases --
+    # the original table; confounded by n_ok varying 529-994 across methods, see common-subset below).
+    own_rows = [mae_row(label, results, ok) for label, results, ok in per_method.values()]
+    print_and_write(own_rows, OUT_DIR / f"recon_error_{SET_NAME}.csv")
+
+    # Common-subset numbers: restrict every method to the intersection of cases where ALL
+    # six methods' posterior means were simulatable -- removes the selection-effect confound
+    # where a method with a lower solve-success rate is implicitly scored on an easier subset.
+    common_ok = np.all([ok for _, _, ok in per_method.values()], axis=0)
+    print(f"\ncommon subset: {int(common_ok.sum())}/{len(pick)} cases where all {len(METHODS)} methods' "
+          f"posterior means simulated successfully\n")
+    common_rows = [mae_row(label, results, common_ok) for label, results, _ in per_method.values()]
+    print_and_write(common_rows, OUT_DIR / f"recon_error_{SET_NAME}_common_subset.csv")
 
 
 if __name__ == "__main__":

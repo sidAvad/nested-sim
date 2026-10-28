@@ -29,6 +29,7 @@ import numpy as np
 
 HOME = Path.home()
 OUT = HOME / "results/nested-sim/pretrained_eval_lofihifi"
+OUT_DIR = HOME / "results/nested-sim/zscore_overall_6methods"
 NESTED_DATA = HOME / "outputs/nested-sim/data"
 
 sys.path.insert(0, str(HOME / "results/cv-dann-sbi/scripts"))
@@ -49,10 +50,11 @@ def _safe_sim_one(args):
 
 METHODS = [
     ("npe-gibbs-lofihifi", "Gibbs NPE"),
-    ("spin-pathD-lofihifi", "SPIN v3d Path D"),
+    ("spin-pathD-lofihifi", "SPIN Dual-flow (Path D)"),
+    ("npe-dann-lofihifi", "NPE DANN / WDGRL"),
     ("npe-noise-lofihifi", "NPE + 11dB noise"),
     ("npe-baseline-lofihifi", "Vanilla NPE"),
-    ("spin-pathA-lofihifi", "SPIN v3d Path A"),
+    ("spin-singleflow-lofihifi", "SPIN single-flow"),
 ]
 SET_NAME = "hifi_v2strong_test"
 
@@ -116,7 +118,8 @@ def main():
               " ".join(f"{v:>16.2f}" for v in wave_mae) + f" {wave_mae_overall:>16.2f} " +
               " ".join(f"{v:>16.2f}" for v in scal_mae))
 
-    out_path = OUT / f"recon_error_{SET_NAME}.csv"
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = OUT_DIR / f"recon_error_{SET_NAME}.csv"
     with open(out_path, "w", newline="") as f:
         wtr = csv.writer(f)
         wtr.writerow(header)

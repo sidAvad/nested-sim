@@ -101,6 +101,11 @@ def main():
                         va="bottom")
                 ax.set_xlabel(knob, fontsize=9, color=MUTED)
         axes[0][col].legend(frameon=False, fontsize=8.5, loc="best")
+    # The beta panels are drawn on the w panels' y-range on purpose. Left to autoscale they
+    # span ~0.001 and a flat line reads as a steep one; on a shared range the point of the
+    # figure -- that beta traverses nothing w traverses -- is literal rather than numeric.
+    for row in range(3):
+        axes[row][1].set_ylim(axes[row][0].get_ylim())
     axes[0][0].set_title("Gibbs NPE (w005to50): w is a working knob\n"
                          "star = calibrated w for that level", fontsize=10, loc="left",
                          color=INK)

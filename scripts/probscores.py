@@ -52,25 +52,20 @@ def interval_score(samples, y, alpha=ALPHA):
     return width + pen, width, ((y >= lo) & (y <= hi)).astype(np.float64)
 
 
-def prior_reference(y_unit, n=20000, seed=0, alpha=ALPHA):
+def prior_reference(y_unit, alpha=ALPHA, **_):
     """CRPS and IS of the prior itself, per case and parameter, in unit coordinates.
 
-    The prior is U[0,1] on every dimension here, so one ensemble is reused for every case
-    and parameter -- what varies is only the truth it is scored against. Gives the
-    denominator for a skill score (1 - score/score_prior: 1 perfect, 0 no better than the
-    prior, negative worse).
+    The prior is exactly U[0,1] on every dimension in this space, so both scores are
+    closed-form rather than estimated: CRPS(U[0,1], y) = y^2 - y + 1/3 for y in [0,1],
+    and the central 1-alpha interval is [alpha/2, 1-alpha/2]. Gives the denominator for a
+    skill score (1 - score/score_prior: 1 perfect, 0 no better than the prior, negative
+    worse). Verified against the Monte-Carlo estimator it replaces.
     """
-    u = np.random.default_rng(seed).random((n, 1))
-    y = np.asarray(y_unit, dtype=np.float64).ravel()
-    term1 = np.abs(u - y[None, :]).mean(0)
-    xs = np.sort(u, axis=0)
-    i = np.arange(1, n + 1, dtype=np.float64)[:, None]
-    term2 = float(((2.0 * i - n - 1.0) * xs).sum() / (n * (n - 1.0)))
-    crps = term1 - term2
-    lo, hi = np.percentile(u, 100 * alpha / 2), np.percentile(u, 100 * (1 - alpha / 2))
-    width = hi - lo
+    y = np.asarray(y_unit, dtype=np.float64)
+    crps = y ** 2 - y + 1.0 / 3.0
+    lo, hi = alpha / 2, 1 - alpha / 2
     pen = (2.0 / alpha) * (np.clip(lo - y, 0, None) + np.clip(y - hi, 0, None))
-    return crps.reshape(np.shape(y_unit)), (width + pen).reshape(np.shape(y_unit))
+    return crps, (hi - lo) + pen
 
 
 def score_set(samples, true, in_box, alpha=ALPHA):

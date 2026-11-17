@@ -73,13 +73,16 @@ def score_set(samples, true, in_box, alpha=ALPHA):
 
     samples (N, m, d) and true (N, d) in unit coordinates; in_box (N, m) bool marks the
     samples a rejection sampler would keep (the joint-in-prior mask, as every method's
-    inference path applies it). Every score is computed twice: `*_box` on the kept samples
-    -- the posterior that is actually deployed -- and `*_raw` on the full ensemble, so a
-    method cannot look good or bad purely through its rejection rate.
+    inference path applies it). Every score is computed twice: `*_box` on the deployed
+    posterior and `*_raw` on the full ensemble, so a method cannot look good or bad purely
+    through its rejection rate.
 
-    Cases with fewer than 2 kept samples get NaN in the `_box` scores (counted in
-    `n_degenerate`) rather than a silent fallback to the raw ensemble, which would mix two
-    different estimands in one column.
+    When fewer than 2 draws survive the box, the `*_box` score falls back to the full
+    ensemble -- which is what the inference paths themselves do (`eval_common`'s
+    "or of the raw samples if none land in-prior"). Returning NaN instead would quietly
+    drop those cases from the mean, and since the fraction reaches ~18% for some
+    method/level pairs that would be a survivor bias in favour of exactly the methods
+    whose rejection rate is worst. `n_degenerate` reports how often the fallback fired.
     """
     N, m, d = samples.shape
     out = {k: np.full((N, d), np.nan) for k in
@@ -92,7 +95,7 @@ def score_set(samples, true, in_box, alpha=ALPHA):
         s_ok = s_all[in_box[i]]
         if s_ok.shape[0] < 2:
             n_degen += 1
-            continue
+            s_ok = s_all
         out["crps_box"][i] = crps_fair(s_ok, y)
         isc, w, cov = interval_score(s_ok, y, alpha)
         out["is_box"][i], out["width_box"][i], out["cov_box"][i] = isc, w, cov

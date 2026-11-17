@@ -46,6 +46,9 @@ import h5py
 import numpy as np
 import torch
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import probscores as ps  # noqa: E402
+
 HOME = Path.home()
 DATA = HOME / "outputs/nested-sim/data"
 OUT = HOME / "results/nested-sim/pretrained_eval_lofihifi"
@@ -65,7 +68,34 @@ METHODS = {
     "spin-pathA-lofihifi-clamped": ("cv-sbi-spin", "exp-v3d_spin_nestedsim-lofihifi_300k3kreal_clamped", None),
     "spin-singleflow-lofihifi": ("cv-sbi-spin", "exp-spin-singleflow_nestedsim-lofihifi_300ksims-3kreal-mixup-400ep", None),
     "npe-dann-lofihifi": ("cv-dann-sbi", "exp-dann-wdgrl_nestedsim-lofihifi_cvdannsbi_300ksims-3kreal-400ep", None),
+    # Gibbs retrained over log w ~ U[0.05, 50] (sn_ceiling 10, 980k lofi, ep800). The
+    # earlier gibbs run's window [0.755, 75.5] excludes both high-fidelity levels'
+    # calibrated w, so only this one can be conditioned at them.
+    "npe-gibbs-w005to50-lofihifi": ("cv-dann-sbi", "exp-gibbs-baseline_nestedsim-lofi_cvdannsbi-bnsf800-w005to50", None),
+    # repo is the source of eval_common (PARAM_KEYS_INFER, load_stats) only; the MDN itself
+    # comes from cv-dann-sbi-gibbs/baselines/sun_routeA via routeA_infer.
+    "sun-routeA-lofihifi": ("cv-dann-sbi", "exp-sun-routeA_nestedsim-lofi_mdn-w1024", None),
 }
+
+# Per-level Gibbs tolerance, from the truth-anchored calibration (2026-11-16): one lofi
+# simulation at the known theta, 499/500 calibration draws per level, metric frozen at
+# ell=26.1327, d_eff=180. lofi_test is w=7.5539 by construction -- its noise IS the
+# training noise -- while the high-fidelity levels' extra physics makes the achievable
+# residual larger and so the tolerance looser.
+W_LOFI = 7.5539
+W_PER_SET = {"lofi_test": W_LOFI, "hifi_v2_test": 1.033, "hifi_v2strong_test": 0.565}
+
+# Route A's beta is the exponent on the same low-fidelity likelihood that w scales, so the
+# two tempering knobs map onto each other as beta = w / W_LOFI: at w = W_LOFI the Gibbs
+# posterior IS the lofi likelihood's posterior, i.e. beta = 1. Clipped to the beta grid the
+# MDN was amortised over (0.1 to 1.5) -- v2strong's 0.0748 falls below it, so that level is
+# evaluated at the grid edge rather than extrapolated, and the clip is reported.
+BETA_GRID_LO, BETA_GRID_HI = 0.1, 1.5
+
+
+def beta_for_set(set_name):
+    b = W_PER_SET[set_name] / W_LOFI
+    return float(np.clip(b, BETA_GRID_LO, BETA_GRID_HI)), b
 WAVES = ["Prv", "Pra", "Pvp", "Pap"]
 
 
@@ -76,6 +106,28 @@ def load_prior_bounds_nestedsim(keys):
     lo_t = torch.tensor([bin_bounds[k][0] for k in keys], dtype=torch.float32)
     hi_t = torch.tensor([bin_bounds[k][1] for k in keys], dtype=torch.float32)
     return lo_t, hi_t
+
+
+def load_log_dims(keys):
+    """Indices of the log-uniform prior dimensions, in PARAM_KEYS_INFER order."""
+    sys.path.insert(0, str(HOME / "projects/nested-sim"))
+    from nested_sim.params import LOG_SAMPLED, to_binary_names  # noqa: E402
+    names = set(to_binary_names({k: 0 for k in LOG_SAMPLED}))
+    return sorted(keys.index(k) for k in names)
+
+
+def to_unit_unclamped(phys, lo, hi, log_mask):
+    """Prior box -> unit cube, logs on the log-uniform dims, WITHOUT clamping to [0,1].
+
+    An unbounded flow can place a draw anywhere, including at a non-positive value on a
+    log dimension; those are floored at a tiny positive number so the log is finite, and
+    land far below 0 in unit coordinates, where the caller's own winsorisation handles
+    them. In-box draws are unaffected.
+    """
+    x = np.where(log_mask, np.log(np.clip(phys, 1e-30, None)), phys)
+    lo2 = np.where(log_mask, np.log(lo), lo)
+    hi2 = np.where(log_mask, np.log(hi), hi)
+    return (x - lo2) / (hi2 - lo2)
 
 
 def build_patients(set_name, n, stats, seed):
@@ -118,7 +170,14 @@ def main():
     ap.add_argument("--n", type=int, default=1000)
     ap.add_argument("--n-samples", type=int, default=1000)
     ap.add_argument("--seed", type=int, default=0)
-    ap.add_argument("--gibbs-w", type=float, default=5.917)
+    ap.add_argument("--gibbs-w", type=float, default=None,
+                    help="force one w for every set, overriding the per-level calibrated "
+                         "W_PER_SET; use to reproduce an older single-w run")
+    ap.add_argument("--routeA-beta", type=float, default=None,
+                    help="force one beta for every set, overriding beta = w/W_LOFI")
+    ap.add_argument("--tag", default=None,
+                    help="write under <method>__<tag> instead of <method>, so a swept "
+                         "w or beta does not overwrite the calibrated run")
     a = ap.parse_args()
 
     repo, run, ckpt = METHODS[a.method]
@@ -129,56 +188,97 @@ def main():
     keys = list(ec.PARAM_KEYS_INFER)
     lo_t, hi_t = load_prior_bounds_nestedsim(keys)
 
-    if a.method == "npe-gibbs-lofihifi":
+    if a.method.startswith("npe-gibbs"):
         import eval_gibbs_sweep as eg  # noqa: E402
         from train_gibbs_npe import WEmbed  # noqa: E402
         sys.modules["__main__"].WEmbed = WEmbed  # w_embed.pt pickled WEmbed from train_gibbs_npe's __main__
         enc, flow, wemb, _, _ = eg.load_gibbs_models(eg.resolve_gibbs_ckpt(run), device)
-        infer = lambda pats: eg.run_posterior_inference_w(  # noqa: E731
-            enc, flow, wemb, torch.stack([p["x_avg"] for p in pats]), np.log(a.gibbs_w), lo_t, hi_t,
+        infer = lambda pats, s_: eg.run_posterior_inference_w(  # noqa: E731
+            enc, flow, wemb, torch.stack([p["x_avg"] for p in pats]),
+            np.log(a.gibbs_w if a.gibbs_w else W_PER_SET[s_]), lo_t, hi_t,
             a.n_samples, device)
+    elif a.method == "sun-routeA-lofihifi":
+        import routeA_infer as ra  # noqa: E402
+        mdn, nth, nx, tf_unit, ra_meta = ra.load_routeA(run, device)
+        print(f"  routeA mdn {ra_meta['ckpt_dir']} best_val {ra_meta['best_val']}")
+        infer = lambda pats, s_: ra.run_posterior_inference_routeA(  # noqa: E731
+            mdn, nth, nx, tf_unit, pats,
+            a.routeA_beta if a.routeA_beta else beta_for_set(s_)[0], a.n_samples, device)
     elif repo == "cv-dann-sbi":
         m = ec.load_models(run, device)
-        infer = lambda pats: ec.run_posterior_inference(  # noqa: E731
+        infer = lambda pats, s_: ec.run_posterior_inference(  # noqa: E731
             m["encoder"], m["flow_net"], pats, lo_t, hi_t, a.n_samples, device)
     elif a.method == "spin-singleflow-lofihifi":
         # exp/wdgrl-grl single shared-encoder+flow arch -- plain v1/v2-style
         # checkpoints (encoder/flow_net/G_rs/G_sr flat under checkpoints/<ts>/),
         # loaded with cv-sbi-spin's own eval_common (not eval_common_v3).
         m = ec.load_models(run, device, checkpoint_ts=ckpt)
-        infer = lambda pats: ec.run_posterior_inference(  # noqa: E731
+        infer = lambda pats, s_: ec.run_posterior_inference(  # noqa: E731
             m["encoder"], m["flow_net"], m["G_rs"], m["apply_G"], pats, lo_t, hi_t, a.n_samples, device)
     else:
         import eval_common_v3 as ec3  # noqa: E402
         m = ec3.load_models(run, device, checkpoint_ts=ckpt)
         if a.method.startswith("spin-pathD"):
-            infer = lambda pats: ec3.run_posterior_inference_sr_direct(  # noqa: E731
+            infer = lambda pats, s_: ec3.run_posterior_inference_sr_direct(  # noqa: E731
                 m["encoder_real"], m["flow_real"], m["G_sr"], m["apply_G"], pats, lo_t, hi_t, a.n_samples, device)
         else:
-            infer = lambda pats: ec.run_posterior_inference(  # noqa: E731
+            infer = lambda pats, s_: ec.run_posterior_inference(  # noqa: E731
                 m["encoder"], m["flow_net"], m["G_rs"], m["apply_G"], pats, lo_t, hi_t, a.n_samples, device)
-    print(f"{a.method}: {run} ckpt={ckpt} gibbs_w={a.gibbs_w if 'gibbs' in a.method else None} "
-          f"stats={STATS_PATH} device={device}", flush=True)
+    print(f"{a.method}: {run} ckpt={ckpt} stats={STATS_PATH} device={device}", flush=True)
 
-    lo, hi = lo_t.numpy(), hi_t.numpy()
+    lo, hi = lo_t.numpy().astype(np.float64), hi_t.numpy().astype(np.float64)
     prior_var = (hi - lo) ** 2 / 12.0
+    log_mask = np.zeros(len(keys), dtype=bool)
+    log_mask[load_log_dims(keys)] = True
+    out_name = a.method if not a.tag else f"{a.method}__{a.tag}"
+
     for set_name in a.sets.split(","):
+        setting = {}
+        if a.method.startswith("npe-gibbs"):
+            setting["w"] = float(a.gibbs_w if a.gibbs_w else W_PER_SET[set_name])
+        if a.method == "sun-routeA-lofihifi":
+            bc, braw = beta_for_set(set_name)
+            setting["beta"] = float(a.routeA_beta if a.routeA_beta else bc)
+            setting["beta_unclipped"] = float(braw)
         pats = build_patients(set_name, a.n, stats, a.seed)
-        _, samples, accept = infer(pats)  # samples (N, n_samples, 24), physical units
+        _, samples, accept = infer(pats, set_name)  # (N, n_samples, 24), physical units
         post_mean, post_std = samples.mean(1), samples.std(1)
         true = np.array([[pat["gt"][k] for k in keys] for pat in pats])
         out = {"param_keys": np.array(keys), "seeds": np.array([pat["seed"] for pat in pats]),
-               "true": true, "post_mean": post_mean, "post_std": post_std, "accept_rate": accept}
+               "true": true, "post_mean": post_mean, "post_std": post_std, "accept_rate": accept,
+               "setting": np.array(json.dumps(setting))}
         for j, k in enumerate(keys):
             ok = post_std[:, j] > 0
             out[f"{k}_z"] = (post_mean[ok, j] - true[ok, j]) / post_std[ok, j]
             out[f"{k}_shrinkage"] = 1.0 - post_std[ok, j] ** 2 / prior_var[j]
-        d = OUT / a.method / set_name
+
+        # Proper scores, in unit-cube coordinates so the 24 parameters are commensurate.
+        # The forward map here is deliberately NOT BoxToUnit.forward, which clamps to
+        # [eps, 1-eps] and would collapse every out-of-box draw onto the boundary --
+        # that mask is exactly what the rejection rate is about, so it has to survive.
+        u = to_unit_unclamped(samples, lo, hi, log_mask)
+        u_true = to_unit_unclamped(true[:, None, :], lo, hi, log_mask)[:, 0, :]
+        in_box = ((u >= 0.0) & (u <= 1.0)).all(axis=2)
+        sc = ps.score_set(np.clip(u, -5.0, 6.0), u_true, in_box)
+        for j, k in enumerate(keys):
+            for nm in ("crps_box", "crps_raw", "is_box", "is_raw", "width_box", "cov_box",
+                       "crps_prior", "is_prior"):
+                out[f"{k}_{nm}"] = sc[nm][:, j]
+        out["n_degenerate"] = sc["n_degenerate"]
+
+        d = OUT / out_name / set_name
         d.mkdir(parents=True, exist_ok=True)
         np.savez(d / "zscore_shrinkage_data.npz", **out)
         summary = {k: (float(np.median(out[f"{k}_z"])), float(np.mean(np.abs(out[f"{k}_z"]) > 2)))
                    for k in ("Rap", "Ras", "Cas", "Eap", "Emax_LV", "Vs")}
-        print(f"  {set_name}: n={len(pats)} accept median {np.median(accept):.2f} | median z, frac|z|>2: "
+        skill = 1.0 - np.nanmean(sc["crps_box"]) / np.nanmean(sc["crps_prior"])
+        skill_is = 1.0 - np.nanmean(sc["is_box"]) / np.nanmean(sc["is_prior"])
+        print(f"  {set_name}: n={len(pats)} {setting} accept median {np.median(accept):.3f} "
+              f"degenerate {int(sc['n_degenerate'])} | CRPS {np.nanmean(sc['crps_box']):.4f} "
+              f"(skill {skill:+.3f})  IS95 {np.nanmean(sc['is_box']):.4f} (skill {skill_is:+.3f})  "
+              f"cov95 {np.nanmean(sc['cov_box']):.3f}  width95 {np.nanmean(sc['width_box']):.4f}",
+              flush=True)
+        print(f"    median z, frac|z|>2: "
               + ", ".join(f"{k} {v[0]:+.2f}/{v[1]:.0%}" for k, v in summary.items()), flush=True)
 
 

@@ -52,6 +52,7 @@ SETS = [("lofi_test", "low-fi (no gap)", "#2a78d6"),
 INK, MUTED, GRID = "#1f1f1e", "#6b6a63", "#e6e5df"
 CLIP = 10.0
 ROW_H, GAP = 1.0, 0.35
+ANN_X = 0.58          # where the right-hand annotation column starts, in data units
 
 
 def load(method, set_name, suffix):
@@ -153,25 +154,24 @@ def fig_crps(rows, suffix):
             ax.text(x + (0.008 if x >= 0 else -0.008), y, f"{x:+.3f}", va="center",
                     ha="left" if x >= 0 else "right", fontsize=7.5, color=INK,
                     family="monospace", zorder=4)
-            ax.text(0.655, y, f"{v['crps']:.4f}  {v['accept']:5.1%}  {v['setting']:>9}",
-                    va="center", fontsize=7.5, color=color, family="monospace",
-                    transform=ax.get_yaxis_transform(), zorder=4)
+            ax.text(ANN_X, y, f"{v['crps']:.4f}  {v['accept']:5.1%}  {v['setting']:>12}",
+                    va="center", fontsize=7.5, color=color, family="monospace", zorder=4)
     _frame(ax, methods, yticks)
     ax.axvline(0, color=INK, lw=1.0, zorder=2)
     ax.xaxis.grid(True, color=GRID, lw=0.8)
-    ax.set_xlim(-0.32, 0.62)
-    ax.set_xticks(np.arange(-0.3, 0.61, 0.1))
+    ax.set_xlim(-0.80, 1.22)
+    ax.set_xticks(np.arange(-0.8, 0.51, 0.1))
     ax.set_xlabel("CRPS skill score,  1 - CRPS / CRPS(prior)   "
                   "(0 = no better than the prior, 1 = point mass on the truth)",
                   fontsize=9, color=MUTED)
-    ax.text(0.655, -GAP / 2 - 0.1, "  CRPS  accept   setting", fontsize=7.5, color=MUTED,
-            va="bottom", family="monospace", transform=ax.get_yaxis_transform())
+    ax.text(ANN_X, -GAP / 2 - 0.1, "  CRPS  accept      setting", fontsize=7.5, color=MUTED,
+            va="bottom", family="monospace")
     handles = [plt.Rectangle((0, 0), 1, 1, fc=c, alpha=0.85, label=lab) for _, lab, c in SETS]
     ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.42, -0.1), ncol=3,
               frameon=False, fontsize=9)
     ax.set_title("Posterior CRPS by model and fidelity level, pooled over all 24 parameters\n"
-                 "(unit-cube coordinates; scored on the draws that survive the prior box; "
-                 "rows ordered by the exaggerated level)",
+                 "unit-cube coordinates, scored on the deployed posterior; rows ordered by "
+                 "the exaggerated level",
                  fontsize=11, loc="left", color=INK, pad=20)
     return fig, "crps_skill_lofihifi.png"
 
@@ -181,7 +181,7 @@ def fig_is(rows, suffix):
     lane = ROW_H / len(SETS)
     fig, ax = plt.subplots(figsize=(11.5, 1.25 * len(methods) + 2.0))
     _bands(ax, methods)
-    yticks, xmax = [], 0.0
+    yticks, xmax, ann = [], 0.0, []
     for r, (m, _) in enumerate(methods):
         top = r * (ROW_H + GAP)
         yticks.append(top + ROW_H / 2)
@@ -197,27 +197,29 @@ def fig_is(rows, suffix):
             ax.barh(y, v["penalty"], left=v["width"], height=lane * 0.78, color=color,
                     alpha=0.95, edgecolor="white", linewidth=1.2, zorder=3)
             xmax = max(xmax, v["is"])
-            ax.text(0.70, y, f"{v['is']:6.3f}  {v['cov95']:5.1%}  {v['width']:.3f}",
-                    va="center", fontsize=7.5, color=color, family="monospace",
-                    transform=ax.get_yaxis_transform(), zorder=4)
+            ann.append((y, color, f"{v['is']:6.3f}  {v['cov95']:5.1%}  {v['width']:.3f}"))
     _frame(ax, methods, yticks)
     prior_is = np.nanmean([v["is_prior"] for v in rows.values()])
+    ann_x = xmax * 1.06
+    for y, color, txt in ann:
+        ax.text(ann_x, y, txt, va="center", fontsize=7.5, color=color,
+                family="monospace", zorder=4)
     ax.axvline(prior_is, color=INK, lw=1.0, ls="--", zorder=2)
     ax.text(prior_is, -GAP / 2 - 0.05, " prior", fontsize=7.5, color=INK, va="bottom")
     ax.xaxis.grid(True, color=GRID, lw=0.8)
-    ax.set_xlim(0, max(xmax, prior_is) * 1.62)
+    ax.set_xlim(0, xmax * 1.40)
     ax.set_xlabel("95% interval score = interval width (pale) + miss penalty (solid);  "
                   "lower is better, prior reference dashed", fontsize=9, color=MUTED)
-    ax.text(0.70, -GAP / 2 - 0.1, "   IS95  cov95  width", fontsize=7.5, color=MUTED,
-            va="bottom", family="monospace", transform=ax.get_yaxis_transform())
+    ax.text(ann_x, -GAP / 2 - 0.1, "   IS95  cov95  width", fontsize=7.5, color=MUTED,
+            va="bottom", family="monospace")
     handles = [plt.Rectangle((0, 0), 1, 1, fc=c, alpha=0.85, label=lab) for _, lab, c in SETS]
     handles += [plt.Rectangle((0, 0), 1, 1, fc=MUTED, alpha=0.40, label="width (sharpness)"),
                 plt.Rectangle((0, 0), 1, 1, fc=MUTED, alpha=0.95, label="penalty (calibration)")]
     ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.45, -0.1), ncol=5,
               frameon=False, fontsize=8.5)
-    ax.set_title("95% interval score by model and fidelity level, split into sharpness and "
-                 "calibration failure\n(nominal coverage 95%; unit-cube coordinates; "
-                 "rows ordered as in the CRPS figure)",
+    ax.set_title("95% interval score, split into sharpness and calibration failure\n"
+                 "nominal coverage 95%, unit-cube coordinates; rows ordered as in the "
+                 "CRPS figure",
                  fontsize=11, loc="left", color=INK, pad=20)
     return fig, "interval_score_lofihifi.png"
 

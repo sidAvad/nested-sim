@@ -39,9 +39,9 @@ def collect(method, prefix, set_name):
         f = d / set_name / "zscore_shrinkage_data.npz"
         if not f.exists():
             continue
-        m = re.fullmatch(rf"{re.escape(method)}__{prefix}(.+)", d.name)
+        m = re.fullmatch(rf"{re.escape(method)}__{prefix}([0-9.]+)", d.name)
         if not m:
-            continue
+            continue  # e.g. the "__beta1" and "__scored" runs, which are not sweep points
         z = np.load(f, allow_pickle=True)
         keys = z["param_keys"]
         pool = lambda fld: np.concatenate([z[f"{k}_{fld}"] for k in keys])  # noqa: E731

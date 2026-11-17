@@ -181,6 +181,9 @@ def main():
     a = ap.parse_args()
 
     repo, run, ckpt = METHODS[a.method]
+    # the posterior draws are Monte Carlo, so without this a re-run perturbs every
+    # reported number by sampling noise alone
+    torch.manual_seed(a.seed)
     sys.path.insert(0, str(HOME / "results" / repo / "scripts"))
     import eval_common as ec  # noqa: E402  (the repo's own eval helpers)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

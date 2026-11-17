@@ -33,8 +33,10 @@ ROOT = Path.home() / "results/nested-sim/pretrained_eval_lofihifi"
 OUT_DIR = ROOT / "scores_lofihifi"
 
 METHODS = [
-    ("npe-gibbs-w005to50-lofihifi", "Gibbs NPE (w per level: 7.55/1.03/0.57)"),
-    ("npe-gibbs-lofihifi", "Gibbs NPE (single w=5.92, earlier window)"),
+    ("npe-gibbs-w005to50-lofihifi", "Gibbs NPE, ep800, w window [0.05, 50]"),
+    ("npe-gibbs-1600-lofihifi", "Gibbs NPE, ep1600, w window [0.76, 75]"),
+    ("npe-gibbs-800nolip-lofihifi", "Gibbs NPE, ep800, w window [0.76, 75]"),
+    ("npe-gibbs-lofihifi", "Gibbs NPE, ep100/300k (w=5.92)"),
     ("sun-routeA-lofihifi", "Sun et al. Route A MDN (beta per level: 1/0.14/0.10)"),
     ("spin-pathD-lofihifi", "SPIN dual-flow, Path D"),
     ("spin-pathA-lofihifi", "SPIN dual-flow, Path A"),
@@ -70,7 +72,8 @@ def setting_str(d):
     except (KeyError, ValueError):
         return ""
     if "w" in s:
-        return f"w={s['w']:g}"
+        clipped = abs(s.get("w_unclamped", s["w"]) - s["w"]) > 1e-9
+        return f"w={s['w']:g}" + ("*" if clipped else "")
     if "beta" in s:
         clipped = abs(s.get("beta_unclipped", s["beta"]) - s["beta"]) > 1e-9
         return f"beta={s['beta']:g}" + ("*" if clipped else "")

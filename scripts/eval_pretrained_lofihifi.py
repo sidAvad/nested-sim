@@ -72,6 +72,11 @@ METHODS = {
     # earlier gibbs run's window [0.755, 75.5] excludes both high-fidelity levels'
     # calibrated w, so only this one can be conditioned at them.
     "npe-gibbs-w005to50-lofihifi": ("cv-dann-sbi", "exp-gibbs-baseline_nestedsim-lofi_cvdannsbi-bnsf800-w005to50", None),
+    # the longest-trained Gibbs runs (980k sims, bounded-nsf, sn_ceiling 10). Their window is
+    # the earlier [0.755, 75.5], which holds lofi's w=7.5539 but not either high-fidelity
+    # level's, so on those sets w is clamped to the window edge -- see clamp_w_to_window.
+    "npe-gibbs-1600-lofihifi": ("cv-dann-sbi", "exp-gibbs-baseline_nestedsim-lofi_cvdannsbi-bnsf1600-nolip", None),
+    "npe-gibbs-800nolip-lofihifi": ("cv-dann-sbi", "exp-gibbs-baseline_nestedsim-lofi_cvdannsbi-bnsf800-nolip", None),
     # repo is the source of eval_common (PARAM_KEYS_INFER, load_stats) only; the MDN itself
     # comes from cv-dann-sbi-gibbs/baselines/sun_routeA via routeA_infer.
     "sun-routeA-lofihifi": ("cv-dann-sbi", "exp-sun-routeA_nestedsim-lofi_mdn-w1024", None),
@@ -91,6 +96,17 @@ W_PER_SET = {"lofi_test": W_LOFI, "hifi_v2_test": 1.033, "hifi_v2strong_test": 0
 # MDN was amortised over (0.1 to 1.5) -- v2strong's 0.0748 falls below it, so that level is
 # evaluated at the grid edge rather than extrapolated, and the clip is reported.
 BETA_GRID_LO, BETA_GRID_HI = 0.1, 1.5
+
+
+def clamp_w_to_window(w, ckpt_dir):
+    """Hold w inside the log-w range the run was actually trained over.
+
+    WEmbed standardises log w to [-1, 1] across that range; outside it the embedding is
+    extrapolating, which is not a meaningful conditioning value. Returns (w_used, w_asked).
+    """
+    meta = json.load(open(Path(ckpt_dir) / "gibbs_metric.json"))
+    lo, hi = meta.get("w_log_range", [-np.inf, np.inf])
+    return float(np.exp(np.clip(np.log(w), lo, hi))), float(w)
 
 
 def beta_for_set(set_name):
@@ -195,11 +211,13 @@ def main():
         import eval_gibbs_sweep as eg  # noqa: E402
         from train_gibbs_npe import WEmbed  # noqa: E402
         sys.modules["__main__"].WEmbed = WEmbed  # w_embed.pt pickled WEmbed from train_gibbs_npe's __main__
-        enc, flow, wemb, _, _ = eg.load_gibbs_models(eg.resolve_gibbs_ckpt(run), device)
+        gibbs_ckpt = eg.resolve_gibbs_ckpt(run)
+        enc, flow, wemb, _, _ = eg.load_gibbs_models(gibbs_ckpt, device)
+        w_for = lambda s_: clamp_w_to_window(  # noqa: E731
+            a.gibbs_w if a.gibbs_w else W_PER_SET[s_], gibbs_ckpt)
         infer = lambda pats, s_: eg.run_posterior_inference_w(  # noqa: E731
             enc, flow, wemb, torch.stack([p["x_avg"] for p in pats]),
-            np.log(a.gibbs_w if a.gibbs_w else W_PER_SET[s_]), lo_t, hi_t,
-            a.n_samples, device)
+            np.log(w_for(s_)[0]), lo_t, hi_t, a.n_samples, device)
     elif a.method == "sun-routeA-lofihifi":
         import routeA_infer as ra  # noqa: E402
         mdn, nth, nx, tf_unit, ra_meta = ra.load_routeA(run, device)
@@ -238,7 +256,9 @@ def main():
     for set_name in a.sets.split(","):
         setting = {}
         if a.method.startswith("npe-gibbs"):
-            setting["w"] = float(a.gibbs_w if a.gibbs_w else W_PER_SET[set_name])
+            wu, wa = w_for(set_name)
+            setting["w"] = wu
+            setting["w_unclamped"] = wa
         if a.method == "sun-routeA-lofihifi":
             bc, braw = beta_for_set(set_name)
             setting["beta"] = float(a.routeA_beta if a.routeA_beta else bc)

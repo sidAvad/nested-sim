@@ -3,17 +3,14 @@
 Three figures over one method list, one fidelity-level palette and one row order, so they
 stack and can be read against each other:
 
-  crps    CRPS skill, 1 - CRPS/CRPS_prior, pooled over all 24 parameters. CRPS is a proper
-          score on the whole posterior, not just its first two moments, so unlike the
-          z-score it cannot be gamed by a posterior that is wide in the right places. 1 is
-          a point mass on the truth, 0 is the prior, negative is worse than having not
-          looked at the data.
-  is      The 95% interval score, split into the two things that make it large: the
-          interval's width (sharpness) and the miss penalty (calibration). The sum alone
-          cannot tell a wide honest posterior from a narrow overconfident one, which is
-          the entire question once the likelihood is misspecified.
+  crps_is_<set>  One per fidelity level, in the same two-panel form as cv-dann-sbi's
+          crps_smc_vs_flow.py: CRPS violins over every case and parameter on the left,
+          and on the right the 95% interval score as an additive bar, width plus
+          undercoverage penalty. Both are divided by the prior sd. CRPS is proper on the
+          whole posterior rather than its first two moments; the interval split is what
+          separates "narrow" from "narrow and wrong".
   zscore  The existing (posterior mean - true)/posterior std figure, reproduced here from
-          the same re-scored runs so all three panels come from one set of draws.
+          the same re-scored runs so every panel comes from one set of draws.
 
 Scores are in unit-cube coordinates (see probscores) and computed on the samples that
 survive the prior box, i.e. the posterior each method actually deploys; the acceptance rate
@@ -134,94 +131,80 @@ def _bands(ax, methods):
             ax.axhspan(top - GAP / 2, top + ROW_H + GAP / 2, color=GRID, alpha=0.35, lw=0, zorder=0)
 
 
-def fig_crps(rows, suffix):
-    methods = order_methods(rows)
-    lane = ROW_H / len(SETS)
-    fig, ax = plt.subplots(figsize=(11.5, 1.25 * len(methods) + 2.0))
-    _bands(ax, methods)
-    yticks = []
-    for r, (m, _) in enumerate(methods):
-        top = r * (ROW_H + GAP)
-        yticks.append(top + ROW_H / 2)
-        for j, (s, _, color) in enumerate(SETS):
-            v = rows.get((m, s))
-            if v is None:
-                continue
-            y = top + (j + 0.5) * lane
-            ax.barh(y, v["crps_skill"], height=lane * 0.78, color=color, alpha=0.85,
-                    edgecolor="white", linewidth=1.2, zorder=3)
-            x = v["crps_skill"]
-            ax.text(x + (0.008 if x >= 0 else -0.008), y, f"{x:+.3f}", va="center",
-                    ha="left" if x >= 0 else "right", fontsize=7.5, color=INK,
-                    family="monospace", zorder=4)
-            ax.text(ANN_X, y, f"{v['crps']:.4f}  {v['accept']:5.1%}  {v['setting']:>12}",
-                    va="center", fontsize=7.5, color=color, family="monospace", zorder=4)
-    _frame(ax, methods, yticks)
-    ax.axvline(0, color=INK, lw=1.0, zorder=2)
-    ax.xaxis.grid(True, color=GRID, lw=0.8)
-    ax.set_xlim(-0.80, 1.22)
-    ax.set_xticks(np.arange(-0.8, 0.51, 0.1))
-    ax.set_xlabel("CRPS skill score,  1 - CRPS / CRPS(prior)   "
-                  "(0 = no better than the prior, 1 = point mass on the truth)",
-                  fontsize=9, color=MUTED)
-    ax.text(ANN_X, -GAP / 2 - 0.1, "  CRPS  accept      setting", fontsize=7.5, color=MUTED,
-            va="bottom", family="monospace")
-    handles = [plt.Rectangle((0, 0), 1, 1, fc=c, alpha=0.85, label=lab) for _, lab, c in SETS]
-    ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.42, -0.1), ncol=3,
-              frameon=False, fontsize=9)
-    ax.set_title("Posterior CRPS by model and fidelity level, pooled over all 24 parameters\n"
-                 "unit-cube coordinates, scored on the deployed posterior; rows ordered by "
-                 "the exaggerated level",
-                 fontsize=11, loc="left", color=INK, pad=20)
-    return fig, "crps_skill_lofihifi.png"
+PRIOR_SD = 1.0 / np.sqrt(12.0)    # sd of U[0,1]: the unit-cube prior's own sd
+PENALTY_C = "#eda4a4"             # reserved for the undercoverage term, every figure
 
 
-def fig_is(rows, suffix):
-    methods = order_methods(rows)
-    lane = ROW_H / len(SETS)
-    fig, ax = plt.subplots(figsize=(11.5, 1.25 * len(methods) + 2.0))
-    _bands(ax, methods)
-    yticks, xmax, ann = [], 0.0, []
-    for r, (m, _) in enumerate(methods):
-        top = r * (ROW_H + GAP)
-        yticks.append(top + ROW_H / 2)
-        for j, (s, _, color) in enumerate(SETS):
-            v = rows.get((m, s))
-            if v is None:
-                continue
-            y = top + (j + 0.5) * lane
-            # width then penalty: the same hue at two alphas, so the split reads inside one
-            # fidelity level's colour rather than introducing a second categorical scale
-            ax.barh(y, v["width"], height=lane * 0.78, color=color, alpha=0.40,
-                    edgecolor="white", linewidth=1.2, zorder=3)
-            ax.barh(y, v["penalty"], left=v["width"], height=lane * 0.78, color=color,
-                    alpha=0.95, edgecolor="white", linewidth=1.2, zorder=3)
-            xmax = max(xmax, v["is"])
-            ann.append((y, color, f"{v['is']:6.3f}  {v['cov95']:5.1%}  {v['width']:.3f}"))
-    _frame(ax, methods, yticks)
-    prior_is = np.nanmean([v["is_prior"] for v in rows.values()])
-    ann_x = xmax * 1.06
-    for y, color, txt in ann:
-        ax.text(ann_x, y, txt, va="center", fontsize=7.5, color=color,
-                family="monospace", zorder=4)
-    ax.axvline(prior_is, color=INK, lw=1.0, ls="--", zorder=2)
-    ax.text(prior_is, -GAP / 2 - 0.05, " prior", fontsize=7.5, color=INK, va="bottom")
-    ax.xaxis.grid(True, color=GRID, lw=0.8)
-    ax.set_xlim(0, xmax * 1.40)
-    ax.set_xlabel("95% interval score = interval width (pale) + miss penalty (solid);  "
-                  "lower is better, prior reference dashed", fontsize=9, color=MUTED)
-    ax.text(ann_x, -GAP / 2 - 0.1, "   IS95  cov95  width", fontsize=7.5, color=MUTED,
-            va="bottom", family="monospace")
-    handles = [plt.Rectangle((0, 0), 1, 1, fc=c, alpha=0.85, label=lab) for _, lab, c in SETS]
-    handles += [plt.Rectangle((0, 0), 1, 1, fc=MUTED, alpha=0.40, label="width (sharpness)"),
-                plt.Rectangle((0, 0), 1, 1, fc=MUTED, alpha=0.95, label="penalty (calibration)")]
-    ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.45, -0.1), ncol=5,
-              frameon=False, fontsize=8.5)
-    ax.set_title("95% interval score, split into sharpness and calibration failure\n"
-                 "nominal coverage 95%, unit-cube coordinates; rows ordered as in the "
-                 "CRPS figure",
-                 fontsize=11, loc="left", color=INK, pad=20)
-    return fig, "interval_score_lofihifi.png"
+def fig_scores(rows, suffix, set_name, set_label, color):
+    """CRPS violins beside the interval score split into width and undercoverage penalty.
+
+    Same two-panel form as crps_smc_vs_flow.py's overall figure, so the two families read
+    together: CRPS is divided by the prior sd on the left, and the right bar is additive,
+    which is the point of showing it -- it separates "narrow" from "narrow and wrong".
+    One figure per fidelity level, every row in that level's colour.
+    """
+    present = [(m, lab) for m, lab in METHODS if (m, set_name) in rows]
+    present.sort(key=lambda ml: rows[(ml[0], set_name)]["crps"])
+    n = len(present)
+    fig, (axv, axb) = plt.subplots(1, 2, figsize=(15.5, 0.95 * n + 2.6),
+                                   gridspec_kw={"width_ratios": [1.15, 1.0]})
+    ys = np.arange(n)[::-1]          # best at the top
+    xmax = 0.0
+    for y, (m, lab) in zip(ys, present):
+        v = rows[(m, set_name)]
+        d = load(m, set_name, suffix)
+        c = pooled(d, "crps_box") / PRIOR_SD
+        c = c[np.isfinite(c)]
+        parts = axv.violinplot([c], positions=[y], vert=False, widths=0.82,
+                               showmedians=False, showextrema=False)
+        for b in parts["bodies"]:
+            b.set_facecolor(color)
+            b.set_edgecolor(color)
+            b.set_alpha(0.75)
+        axv.plot([np.median(c)], [y], marker="|", ms=13, color=INK, mew=1.8, zorder=4)
+        axv.plot([np.mean(c)], [y], marker="o", ms=5.5, color=INK, zorder=4)
+
+        w, pen = v["width"] / PRIOR_SD, v["penalty"] / PRIOR_SD
+        axb.barh(y, w, height=0.62, color=color, alpha=0.9, edgecolor="white",
+                 linewidth=1.2, zorder=3)
+        axb.barh(y, pen, left=w, height=0.62, color=PENALTY_C, hatch="//",
+                 edgecolor="white", linewidth=1.2, zorder=3)
+        xmax = max(xmax, w + pen)
+        axb.text(w + pen + 0.06, y, f"{w + pen:.2f}", va="center", fontsize=8.5, color=INK)
+        axb.text(0.995, y, f"cov {v['cov95']:.0%}   accept {v['accept']:.0%}"
+                 + (f"   {v['setting']}" if v["setting"] else ""),
+                 va="center", ha="right", fontsize=7.5, color=MUTED, family="monospace",
+                 transform=axb.get_yaxis_transform(), zorder=4)
+
+    for ax in (axv, axb):
+        ax.set_ylim(-0.7, n - 0.3)
+        for sp in ("top", "right", "left"):
+            ax.spines[sp].set_visible(False)
+        ax.tick_params(axis="y", length=0)
+        ax.tick_params(colors=MUTED, labelsize=8)
+        ax.xaxis.grid(True, color=GRID, lw=0.8)
+        ax.set_axisbelow(True)
+    axv.set_yticks(ys, [lab for _, lab in present], fontsize=9.5)
+    axb.set_yticks(ys, [])
+    axv.set_xlim(0, None)
+    axb.set_xlim(0, xmax * 1.12)
+    axv.axvline(1.0, color=INK, lw=1.0, ls="--", zorder=2)
+    axv.text(1.0, n - 0.32, " prior", fontsize=8, color=INK, va="bottom")
+    axv.set_xlabel("CRPS / prior sd   (lower is better; | = median, o = mean)",
+                   fontsize=9.5, color=MUTED)
+    axb.set_xlabel("mean interval score (level 95%) / prior sd", fontsize=9.5, color=MUTED)
+    axv.set_title("CRPS, pooled over 24 parameters", fontsize=10.5, color=INK)
+    axb.set_title("Interval score at 95%, split into its two terms", fontsize=10.5, color=INK)
+    axb.legend(handles=[plt.Rectangle((0, 0), 1, 1, fc=color, alpha=0.9,
+                                      label="width (sharpness)"),
+                        plt.Rectangle((0, 0), 1, 1, fc=PENALTY_C, hatch="//",
+                                      label="undercoverage penalty")],
+               loc="lower right", frameon=False, fontsize=8.5)
+    fig.suptitle(f"Proper scores vs ground truth -- {set_label}, 1,000 test sims\n"
+                 "scored on the posterior each method deploys (draws surviving the prior "
+                 "box); unit-cube coordinates",
+                 fontsize=11.5, color=INK, x=0.01, ha="left")
+    return fig, f"crps_is_{set_name}.png"
 
 
 def fig_zscore(rows, suffix):
@@ -290,16 +273,22 @@ def write_table(rows, path):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--suffix", default="scored")
-    ap.add_argument("--metric", default="all", choices=["all", "crps", "is", "zscore"])
+    ap.add_argument("--metric", default="all", choices=["all", "scores", "zscore"])
     a = ap.parse_args()
     rows = gather(a.suffix)
     if not rows:
         raise SystemExit(f"no scored runs found under {ROOT} with suffix '{a.suffix}'")
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    builders = {"crps": fig_crps, "is": fig_is, "zscore": fig_zscore}
-    for name in (builders if a.metric == "all" else [a.metric]):
-        fig, fname = builders[name](rows, a.suffix)
-        fig.tight_layout()
+    made = []
+    if a.metric in ("all", "scores"):
+        for set_name, set_label, color in SETS:
+            if not any((m, set_name) in rows for m, _ in METHODS):
+                continue
+            made.append(fig_scores(rows, a.suffix, set_name, set_label, color))
+    if a.metric in ("all", "zscore"):
+        made.append(fig_zscore(rows, a.suffix))
+    for fig, fname in made:
+        fig.tight_layout(rect=(0, 0, 1, 0.94))
         fig.savefig(OUT_DIR / fname, dpi=130)
         plt.close(fig)
         print("wrote", OUT_DIR / fname)

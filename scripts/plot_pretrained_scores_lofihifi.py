@@ -133,6 +133,8 @@ def _bands(ax, methods):
 
 PRIOR_SD = 1.0 / np.sqrt(12.0)    # sd of U[0,1]: the unit-cube prior's own sd
 PENALTY_C = "#eda4a4"             # reserved for the undercoverage term, every figure
+CRPS_CLIP = 3.0                   # display clip: a handful of cases reach ~20 prior sd and
+                                  # would otherwise flatten every violin to a spike
 
 
 def fig_scores(rows, suffix, set_name, set_label, color):
@@ -149,20 +151,24 @@ def fig_scores(rows, suffix, set_name, set_label, color):
     fig, (axv, axb) = plt.subplots(1, 2, figsize=(15.5, 0.95 * n + 2.6),
                                    gridspec_kw={"width_ratios": [1.15, 1.0]})
     ys = np.arange(n)[::-1]          # best at the top
-    xmax = 0.0
+    xmax, ann = 0.0, []
     for y, (m, lab) in zip(ys, present):
         v = rows[(m, set_name)]
         d = load(m, set_name, suffix)
         c = pooled(d, "crps_box") / PRIOR_SD
         c = c[np.isfinite(c)]
-        parts = axv.violinplot([c], positions=[y], vert=False, widths=0.82,
+        med, mean = np.median(c), np.mean(c)
+        parts = axv.violinplot([np.clip(c, 0, CRPS_CLIP)], positions=[y], vert=False,
+                               widths=0.82,
                                showmedians=False, showextrema=False)
         for b in parts["bodies"]:
             b.set_facecolor(color)
             b.set_edgecolor(color)
             b.set_alpha(0.75)
-        axv.plot([np.median(c)], [y], marker="|", ms=13, color=INK, mew=1.8, zorder=4)
-        axv.plot([np.mean(c)], [y], marker="o", ms=5.5, color=INK, zorder=4)
+        axv.plot([med], [y], marker="|", ms=13, color=INK, mew=1.8, zorder=4)
+        axv.plot([min(mean, CRPS_CLIP)], [y], marker="o", ms=5.5, color=INK, zorder=4)
+        axv.text(CRPS_CLIP + 0.06, y, f"{med:.2f} / {mean:.2f}", va="center", fontsize=8,
+                 color=INK, family="monospace")
 
         w, pen = v["width"] / PRIOR_SD, v["penalty"] / PRIOR_SD
         axb.barh(y, w, height=0.62, color=color, alpha=0.9, edgecolor="white",
@@ -170,11 +176,9 @@ def fig_scores(rows, suffix, set_name, set_label, color):
         axb.barh(y, pen, left=w, height=0.62, color=PENALTY_C, hatch="//",
                  edgecolor="white", linewidth=1.2, zorder=3)
         xmax = max(xmax, w + pen)
-        axb.text(w + pen + 0.06, y, f"{w + pen:.2f}", va="center", fontsize=8.5, color=INK)
-        axb.text(0.995, y, f"cov {v['cov95']:.0%}   accept {v['accept']:.0%}"
-                 + (f"   {v['setting']}" if v["setting"] else ""),
-                 va="center", ha="right", fontsize=7.5, color=MUTED, family="monospace",
-                 transform=axb.get_yaxis_transform(), zorder=4)
+        axb.text(w + pen + 0.08, y, f"{w + pen:.2f}", va="center", fontsize=8.5, color=INK)
+        ann.append((y, f"cov {v['cov95']:4.0%}  accept {v['accept']:4.0%}"
+                    + (f"  {v['setting']}" if v["setting"] else "")))
 
     for ax in (axv, axb):
         ax.set_ylim(-0.7, n - 0.3)
@@ -186,12 +190,19 @@ def fig_scores(rows, suffix, set_name, set_label, color):
         ax.set_axisbelow(True)
     axv.set_yticks(ys, [lab for _, lab in present], fontsize=9.5)
     axb.set_yticks(ys, [])
-    axv.set_xlim(0, None)
-    axb.set_xlim(0, xmax * 1.12)
+    ann_x = xmax * 1.20
+    for y, txt in ann:
+        axb.text(ann_x, y, txt, va="center", fontsize=7.5, color=MUTED,
+                 family="monospace", zorder=4)
+    axv.set_xlim(0, CRPS_CLIP * 1.33)
+    axv.set_xticks(np.arange(0, CRPS_CLIP + 0.01, 0.5))
+    axb.set_xlim(0, xmax * 1.62)
     axv.axvline(1.0, color=INK, lw=1.0, ls="--", zorder=2)
     axv.text(1.0, n - 0.32, " prior", fontsize=8, color=INK, va="bottom")
-    axv.set_xlabel("CRPS / prior sd   (lower is better; | = median, o = mean)",
-                   fontsize=9.5, color=MUTED)
+    axv.text(CRPS_CLIP + 0.06, n - 0.32, "med / mean", fontsize=7.5, color=MUTED,
+             va="bottom", family="monospace")
+    axv.set_xlabel(f"CRPS / prior sd   (lower is better; | = median, o = mean; "
+                   f"display clipped at {CRPS_CLIP:g})", fontsize=9.5, color=MUTED)
     axb.set_xlabel("mean interval score (level 95%) / prior sd", fontsize=9.5, color=MUTED)
     axv.set_title("CRPS, pooled over 24 parameters", fontsize=10.5, color=INK)
     axb.set_title("Interval score at 95%, split into its two terms", fontsize=10.5, color=INK)

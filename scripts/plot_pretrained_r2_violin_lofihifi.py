@@ -134,21 +134,21 @@ def main():
     for p, v in zip(pos, vals):
         ax.text(xmax + 0.03, p, f"{np.median(v):+.2f}", va="center", ha="left",
                 fontsize=9, color=INK, family="monospace")
-        ax.text(xmax + 0.17, p, f"{np.mean(v):+.2f}", va="center", ha="left",
+        ax.text(xmax + 0.19, p, f"{np.mean(v):+.2f}", va="center", ha="left",
                 fontsize=9, color=MUTED, family="monospace")
         frac = f"{int((v > 0.5).sum()):2d}" if a.by == "param" else f"{np.mean(v > 0):.2f}"
-        ax.text(xmax + 0.31, p, frac, va="center", ha="left",
+        ax.text(xmax + 0.40, p, frac, va="center", ha="left",
                 fontsize=9, color=MUTED, family="monospace")
     ax.text(xmax + 0.03, pos[0] + 0.72, "med", fontsize=9, color=INK, family="monospace")
-    ax.text(xmax + 0.17, pos[0] + 0.72, "mean", fontsize=9, color=MUTED, family="monospace")
-    ax.text(xmax + 0.31, pos[0] + 0.72, "n>.5" if a.by == "param" else "f>0",
+    ax.text(xmax + 0.19, pos[0] + 0.72, "mean", fontsize=9, color=MUTED, family="monospace")
+    ax.text(xmax + 0.40, pos[0] + 0.72, "n>.5" if a.by == "param" else "f>0",
             fontsize=9, color=MUTED, family="monospace")
 
     ax.axvline(0.0, color=INK, ls="--", lw=1.1)
     ax.text(0.0, pos[0] + 0.72, "no better than\npredicting the mean", fontsize=8,
             color=MUTED, ha="center", va="bottom")
     ax.set_yticks(pos); ax.set_yticklabels(labs, fontsize=9.5)
-    ax.set_xlim(CLIP_LO - 0.02, xmax + 0.46)
+    ax.set_xlim(CLIP_LO - 0.02, xmax + 0.56)
     ax.set_ylim(-0.7, len(rows) + 0.2)
     ax.set_xticks(np.arange(-1.0, 1.01, 0.25))
     if a.by == "param":

@@ -80,6 +80,17 @@ METHODS = {
     # repo is the source of eval_common (PARAM_KEYS_INFER, load_stats) only; the MDN itself
     # comes from cv-dann-sbi-gibbs/baselines/sun_routeA via routeA_infer.
     "sun-routeA-lofihifi": ("cv-dann-sbi", "exp-sun-routeA_nestedsim-lofi_mdn-w1024", None),
+    # Route A with upstream's own RouteA_NPE.py call-site MDN arch (9 components,
+    # 3 layers, batch 128, 500 ep) on the same w1024 pairs.
+    "sun-routeA-callsite": ("cv-dann-sbi", "exp-sun-routeA_nestedsim-lofi_mdn-w1024-callsite", None),
+    # Fully verbatim arm: 128-wide score net + upstream's Lgmcmc x clamp + call-site MDN.
+    "sun-routeA-verbatim": ("cv-dann-sbi", "exp-sun-routeA_nestedsim-lofi_mdn-verbatim128", None),
+    # Upstream score-net capacity (128 wide) with the repaired x clamp, isolating the
+    # clamp from the capacity fix.
+    "sun-routeA-w128fix": ("cv-dann-sbi", "exp-sun-routeA_nestedsim-lofi_mdn-w128-fixedclamp", None),
+    # Gibbs with M, ell and w_hat calibrated on the hifi_v2strong stand-in rather than
+    # on real patients: w window [0.135, 13.5], d_eff 156, w_hat 1.352.
+    "npe-gibbs-v2strongcal-lofihifi": ("cv-dann-sbi", "exp-gibbs-v2strongcal_nestedsim-lofi_cvdannsbi-bnsf800", None),
 }
 
 # Per-level Gibbs tolerance, from the truth-anchored calibration (2026-11-16): one lofi
@@ -226,7 +237,7 @@ def main():
         infer = lambda pats, s_: eg.run_posterior_inference_w(  # noqa: E731
             enc, flow, wemb, torch.stack([p["x_avg"] for p in pats]),
             np.log(w_for(s_)[0]), lo_t, hi_t, a.n_samples, device)
-    elif a.method == "sun-routeA-lofihifi":
+    elif a.method.startswith("sun-routeA"):
         import routeA_infer as ra  # noqa: E402
         mdn, nth, nx, tf_unit, ra_meta = ra.load_routeA(run, device)
         print(f"  routeA mdn {ra_meta['ckpt_dir']} best_val {ra_meta['best_val']}")
@@ -267,7 +278,7 @@ def main():
             wu, wa = w_for(set_name)
             setting["w"] = wu
             setting["w_unclamped"] = wa
-        if a.method == "sun-routeA-lofihifi":
+        if a.method.startswith("sun-routeA"):
             bc, braw = beta_for_set(set_name)
             setting["beta"] = float(a.routeA_beta if a.routeA_beta else bc)
             setting["beta_unclipped"] = float(braw)

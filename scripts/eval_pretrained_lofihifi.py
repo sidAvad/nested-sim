@@ -191,6 +191,9 @@ def main():
                          "W_PER_SET; use to reproduce an older single-w run")
     ap.add_argument("--routeA-beta", type=float, default=None,
                     help="force one beta for every set, overriding beta = w/W_LOFI")
+    ap.add_argument("--gibbs-epoch", type=int, default=None,
+                    help="evaluate a periodic checkpoint (e.g. 400) instead of the final "
+                         "weights; the epoch subdir carries its own metric and w_embed")
     ap.add_argument("--tag", default=None,
                     help="write under <method>__<tag> instead of <method>, so a swept "
                          "w or beta does not overwrite the calibrated run")
@@ -212,6 +215,11 @@ def main():
         from train_gibbs_npe import WEmbed  # noqa: E402
         sys.modules["__main__"].WEmbed = WEmbed  # w_embed.pt pickled WEmbed from train_gibbs_npe's __main__
         gibbs_ckpt = eg.resolve_gibbs_ckpt(run)
+        if a.gibbs_epoch:
+            gibbs_ckpt = gibbs_ckpt / f"epoch{a.gibbs_epoch:04d}"
+            if not gibbs_ckpt.exists():
+                raise SystemExit(f"no checkpoint at {gibbs_ckpt}")
+        print(f"  gibbs ckpt {gibbs_ckpt}")
         enc, flow, wemb, _, _ = eg.load_gibbs_models(gibbs_ckpt, device)
         w_for = lambda s_: clamp_w_to_window(  # noqa: E731
             a.gibbs_w if a.gibbs_w else W_PER_SET[s_], gibbs_ckpt)

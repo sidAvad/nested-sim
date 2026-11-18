@@ -39,7 +39,6 @@ METHODS = [
     ("npe-gibbs-v2strongcal-lofihifi", "Gibbs NPE, ep400, hifi-calibrated w window [0.14, 13.5]"),
     ("npe-gibbs-lofihifi", "Gibbs NPE, ep100/300k (w=5.92)"),
     ("sun-routeA-lofihifi", "Sun et al. Route A MDN (beta per level: 1/0.14/0.10)"),
-    ("sun-routeA-callsite", "Sun et al. Route A, upstream call-site MDN arch"),
     ("spin-pathD-lofihifi", "SPIN dual-flow, Path D"),
     ("spin-pathA-lofihifi", "SPIN dual-flow, Path A"),
     ("spin-singleflow-lofihifi", "SPIN single-flow (mixup)"),

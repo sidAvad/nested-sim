@@ -57,6 +57,24 @@ def r2(true, pred):
     return 1.0 - ss_res / ss_tot if ss_tot > 0 else np.nan
 
 
+def r2_case(true_u, pred_u):
+    """Per-case R^2 against the prior-mean predictor, pooled over the 24 parameters.
+
+    A single case has no across-case variance to form SS_tot from, so the reference is
+    the prior itself: SS_tot = d * Var(U[0,1]) = d/12, the error a predictor that
+    always returned the prior mean would make in expectation. The result is on the same
+    footing as the CRPS and interval-score skill scores, which use the same baseline:
+    1 = exact, 0 = no better than the prior, negative = worse.
+
+    Using each case's own empirical spread instead (its 24 true values about their own
+    mean) was considered and rejected -- it compares a parameter against the average of
+    unrelated parameters, and goes unstable whenever a case sits near the box centre.
+    """
+    d = true_u.shape[1]
+    ss_res = np.sum((true_u - pred_u) ** 2, axis=1)
+    return 1.0 - ss_res / (d / 12.0)
+
+
 def to_unit(phys, lo, hi, log_mask):
     x = np.where(log_mask, np.log(np.clip(phys, 1e-30, None)), phys)
     lo2 = np.where(log_mask, np.log(lo), lo)
@@ -68,6 +86,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--set", default="hifi_v2_test", choices=list(SETS))
     ap.add_argument("--suffix", default="scored")
+    ap.add_argument("--by", default="param", choices=["param", "case"],
+                    help="param: one point per parameter, R^2 across the 1000 cases. "
+                         "case: one point per case, R^2 across the 24 parameters "
+                         "against the prior-mean predictor.")
     a = ap.parse_args()
 
     import eval_pretrained_lofihifi as ep  # noqa: E402  (prior box + log dims)
@@ -85,7 +107,8 @@ def main():
         log_mask[ep.load_log_dims(keys)] = True
         tu = to_unit(d["true"], lo, hi, log_mask)
         pu = to_unit(d["post_mean"], lo, hi, log_mask)
-        vals = np.array([r2(tu[:, j], pu[:, j]) for j in range(len(keys))])
+        vals = (np.array([r2(tu[:, j], pu[:, j]) for j in range(len(keys))])
+                if a.by == "param" else r2_case(tu, pu))
         rows.append((lab, vals))
     if not rows:
         raise SystemExit(f"no scored runs for {a.set} under {ROOT}")
@@ -113,11 +136,13 @@ def main():
                 fontsize=9, color=INK, family="monospace")
         ax.text(xmax + 0.17, p, f"{np.mean(v):+.2f}", va="center", ha="left",
                 fontsize=9, color=MUTED, family="monospace")
-        ax.text(xmax + 0.31, p, f"{int((v > 0.5).sum()):2d}", va="center", ha="left",
+        frac = f"{int((v > 0.5).sum()):2d}" if a.by == "param" else f"{np.mean(v > 0):.2f}"
+        ax.text(xmax + 0.31, p, frac, va="center", ha="left",
                 fontsize=9, color=MUTED, family="monospace")
     ax.text(xmax + 0.03, pos[0] + 0.72, "med", fontsize=9, color=INK, family="monospace")
     ax.text(xmax + 0.17, pos[0] + 0.72, "mean", fontsize=9, color=MUTED, family="monospace")
-    ax.text(xmax + 0.31, pos[0] + 0.72, "n>.5", fontsize=9, color=MUTED, family="monospace")
+    ax.text(xmax + 0.31, pos[0] + 0.72, "n>.5" if a.by == "param" else "f>0",
+            fontsize=9, color=MUTED, family="monospace")
 
     ax.axvline(0.0, color=INK, ls="--", lw=1.1)
     ax.text(0.0, pos[0] + 0.72, "no better than\npredicting the mean", fontsize=8,
@@ -126,10 +151,17 @@ def main():
     ax.set_xlim(CLIP_LO - 0.02, xmax + 0.46)
     ax.set_ylim(-0.7, len(rows) + 0.2)
     ax.set_xticks(np.arange(-1.0, 1.01, 0.25))
-    ax.set_xlabel("R² of posterior mean vs truth, one point per parameter "
-                  f"(unit-cube coordinates; display floor {CLIP_LO:g})")
-    ax.set_title(f"Per-parameter R² pooled over 24 parameters — {set_label}, "
-                 "1,000 test sims", loc="left", fontsize=12)
+    if a.by == "param":
+        ax.set_xlabel("R² of posterior mean vs truth, one point per parameter "
+                      f"(unit-cube coordinates; display floor {CLIP_LO:g})")
+        ax.set_title(f"Per-parameter R² pooled over 24 parameters — {set_label}, "
+                     "1,000 test sims", loc="left", fontsize=12)
+    else:
+        ax.set_xlabel("R² of posterior mean vs truth, one point per test case, pooled "
+                      f"over 24 parameters vs the prior-mean predictor "
+                      f"(unit-cube; display floor {CLIP_LO:g})")
+        ax.set_title(f"Per-case R² pooled over 24 parameters — {set_label}, "
+                     "1,000 test sims", loc="left", fontsize=12)
     ax.xaxis.grid(True, color=GRID); ax.set_axisbelow(True)
     for s in ("top", "right", "left"):
         ax.spines[s].set_visible(False)
@@ -137,13 +169,16 @@ def main():
     ax.tick_params(colors=MUTED)
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    out = OUT_DIR / f"r2_violin_lofihifi_{a.set}.png"
+    out = OUT_DIR / (f"r2_violin_lofihifi_{a.set}.png" if a.by == "param"
+                     else f"r2_violin_bycase_lofihifi_{a.set}.png")
     fig.tight_layout()
     fig.savefig(out, dpi=170, bbox_inches="tight")
     print(f"wrote {out}")
     for lab, v in rows:
+        tail = (f"n>0.5 {int((v > 0.5).sum())}/24" if a.by == "param"
+                else f"frac>0 {np.mean(v > 0):.3f}")
         print(f"  {lab:46s} med {np.median(v):+.3f}  mean {np.mean(v):+.3f}  "
-              f"min {v.min():+.3f}  n>0.5 {int((v > 0.5).sum())}/24")
+              f"min {v.min():+.3f}  {tail}")
 
 
 if __name__ == "__main__":

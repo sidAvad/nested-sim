@@ -110,12 +110,16 @@ def setting_str(d):
         s = json.loads(str(d["setting"]))
     except (KeyError, ValueError):
         return ""
-    if "w" in s:
-        clipped = abs(s.get("w_unclamped", s["w"]) - s["w"]) > 1e-9
-        return f"w={s['w']:g}" + ("*" if clipped else "")
-    if "beta" in s:
-        clipped = abs(s.get("beta_unclipped", s["beta"]) - s["beta"]) > 1e-9
-        return f"beta={s['beta']:g}" + ("*" if clipped else "")
+    for name, med, frac in (("w", "w_median", "w_clamped_frac"),
+                            ("beta", "beta_median", "beta_clipped_frac")):
+        if name not in s:
+            continue
+        v = s[name]
+        if isinstance(v, str):      # per-case tempering: report the median and the
+            return (f"{name}~{s[med]:.3g} per-case"   # share pinned to the window edge
+                    + (f", {s[frac]:.0%} clamped" if s.get(frac) else ""))
+        unc = s.get("w_unclamped" if name == "w" else "beta_unclipped", v)
+        return f"{name}={v:g}" + ("*" if abs(unc - v) > 1e-9 else "")
     return ""
 
 

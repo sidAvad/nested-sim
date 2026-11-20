@@ -30,7 +30,10 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
 ROOT = Path.home() / "results/nested-sim/pretrained_eval_lofihifi"
-OUT_DIR = ROOT / "scores_lofihifi"
+# Figures live outside the eval tree: the npz under ROOT are large and are not
+# synced to the Mac, so the whole eval tree is a mutagen ignore and anything
+# written there would be invisible locally.
+OUT_DIR = Path.home() / "results/nested-sim/figures_lofihifi/scores_lofihifi"
 
 METHODS = [
     ("npe-gibbs-w005to50-lofihifi", "Gibbs NPE, ep800, w window [0.05, 50]"),

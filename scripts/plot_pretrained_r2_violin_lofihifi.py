@@ -27,7 +27,10 @@ HOME = Path.home()
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 ROOT = HOME / "results/nested-sim/pretrained_eval_lofihifi"
-OUT_DIR = ROOT / "scores_lofihifi"
+# Figures live outside the eval tree: the npz under ROOT are large and are not
+# synced to the Mac, so the whole eval tree is a mutagen ignore and anything
+# written there would be invisible locally.
+OUT_DIR = Path.home() / "results/nested-sim/figures_lofihifi/scores_lofihifi"
 
 # Same roster and labels as plot_pretrained_scores_lofihifi.py, so the figures line up.
 METHODS = [

@@ -91,6 +91,12 @@ METHODS = {
     # Gibbs with M, ell and w_hat calibrated on the hifi_v2strong stand-in rather than
     # on real patients: w window [0.135, 13.5], d_eff 156, w_hat 1.352.
     "npe-gibbs-v2strongcal-lofihifi": ("cv-dann-sbi", "exp-gibbs-v2strongcal_nestedsim-lofi_cvdannsbi-bnsf800", None),
+    # Gibbs with M, ell and w_hat calibrated on the hifi_v2 realistic stand-in:
+    # w window [0.186, 18.63], d_eff 156, w_hat 1.863.
+    "npe-gibbs-v2realcal-lofihifi": ("cv-dann-sbi", "exp-gibbs-v2realcal_nestedsim-lofi_cvdannsbi-bnsf800", None),
+    # Route A's call-site MDN trained on the pre-Langevin bank pairs instead of the
+    # synthesized ones: the same architecture with the sampler's decorrelation removed.
+    "sun-routeA-cleanpairs": ("cv-dann-sbi", "exp-sun-routeA_nestedsim-lofi_mdn-cleanpairs", None),
 }
 
 # Per-level Gibbs tolerance, from the truth-anchored calibration (2026-11-16): one lofi

@@ -90,6 +90,26 @@ PERCASE_OVERRIDE = {
     "pcwthmarg-realcal-ep800": ("npe-gibbs-v2realcal-lofihifi", "pcwthmarg-ep800"),
     "pcw-routeA": ("sun-routeA-lofihifi", "pcw"),
 }
+# Flow-expressiveness roster; same keys and labels as plot_pretrained_scores_lofihifi.py
+# so the two figures line up.
+METHODS_ARCH = [
+    ("arch-maf400", "Gibbs MAF ep400, real-patient-cal (305k flow params)"),
+    ("arch-maf800", "Gibbs MAF ep800, real-patient-cal (305k flow params)"),
+    ("arch-bnsf400", "Gibbs NSF ep400, real-patient-cal (3.79M flow params)"),
+    ("arch-bnsf800", "Gibbs NSF ep800, real-patient-cal (3.79M flow params)"),
+    ("arch-v2realcal-ep400", "Gibbs NSF ep400, realistic-cal w window [0.19, 18.6]"),
+    ("arch-v2realcal-ep800", "Gibbs NSF ep800, realistic-cal w window [0.19, 18.6]"),
+    ("sun-routeA-lofihifi", "Sun et al. Route A MDN (beta per level: 1/0.14/0.10)"),
+    ("npe-baseline-lofihifi", "Vanilla NPE"),
+]
+ARCH_OVERRIDE = {
+    "arch-maf400": ("npe-gibbs-maf400-lofihifi", "arch2x2"),
+    "arch-maf800": ("npe-gibbs-maf800-lofihifi", "arch2x2"),
+    "arch-bnsf400": ("npe-gibbs-bnsf400-lofihifi", "arch2x2"),
+    "arch-bnsf800": ("npe-gibbs-bnsf800-lofihifi", "arch2x2"),
+    "arch-v2realcal-ep400": ("npe-gibbs-v2realcal-lofihifi", "ep400"),
+    "arch-v2realcal-ep800": ("npe-gibbs-v2realcal-lofihifi", ""),
+}
 SETS = {"lofi_test": ("low-fi (no gap)", "#2a78d6"),
         "hifi_v2_test": ("high-fi realistic", "#eb6834"),
         "hifi_v2strong_test": ("high-fi exaggerated", "#1baf7a")}
@@ -136,13 +156,15 @@ def main():
                     help="param: one point per parameter, R^2 across the 1000 cases. "
                          "case: one point per case, R^2 across the 24 parameters "
                          "against the prior-mean predictor.")
-    ap.add_argument("--roster", default="full", choices=["full", "percase"])
+    ap.add_argument("--roster", default="full", choices=["full", "percase", "arch"])
     ap.add_argument("--out-sub", default="",
                     help="subfolder of scores_lofihifi to write into")
     a = ap.parse_args()
     global METHODS, SUFFIX_OVERRIDE, OUT_DIR
     if a.roster == "percase":
         METHODS, SUFFIX_OVERRIDE = METHODS_PERCASE, PERCASE_OVERRIDE
+    elif a.roster == "arch":
+        METHODS, SUFFIX_OVERRIDE = METHODS_ARCH, ARCH_OVERRIDE
     if a.out_sub:
         OUT_DIR = OUT_DIR / a.out_sub
 

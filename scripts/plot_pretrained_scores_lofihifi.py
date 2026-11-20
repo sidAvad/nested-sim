@@ -63,6 +63,7 @@ ANN_X = 0.58          # where the right-hand annotation column starts, in data u
 # name; the value is (eval directory stem, tag).
 SUFFIX_OVERRIDE = {
     "npe-gibbs-v2strongcal-ep800": ("npe-gibbs-v2strongcal-lofihifi", "ep800"),
+    "npe-gibbs-v2realcal-lofihifi": ("npe-gibbs-v2realcal-lofihifi", ""),
     "npe-gibbs-v2realcal-ep400": ("npe-gibbs-v2realcal-lofihifi", "ep400"),
     "sun-routeA-cleanpairs": ("sun-routeA-cleanpairs", "beta1"),
 }

@@ -36,7 +36,11 @@ METHODS = [
     ("npe-gibbs-800nolip-lofihifi", "Gibbs NPE, ep800, w window [0.76, 75]"),
     ("npe-gibbs-v2strongcal-lofihifi", "Gibbs NPE, ep400, hifi-calibrated"),
     ("npe-gibbs-lofihifi", "Gibbs NPE, ep100/300k (w=5.92)"),
+    ("npe-gibbs-v2strongcal-lofihifi", "Gibbs NPE, ep800, hifi-calibrated"),
+    ("npe-gibbs-v2realcal-lofihifi", "Gibbs NPE, ep800, realistic-calibrated"),
+    ("npe-gibbs-v2realcal-ep400", "Gibbs NPE, ep400, realistic-calibrated"),
     ("sun-routeA-lofihifi", "Sun et al. Route A MDN"),
+    ("sun-routeA-cleanpairs", "Route A MDN, clean pairs (no Langevin)"),
     ("spin-pathD-lofihifi", "SPIN dual-flow, Path D"),
     ("spin-pathA-lofihifi", "SPIN dual-flow, Path A"),
     ("spin-singleflow-lofihifi", "SPIN single-flow (mixup)"),
@@ -44,6 +48,13 @@ METHODS = [
     ("npe-noise-lofihifi", "NPE + 11dB noise"),
     ("npe-baseline-lofihifi", "Vanilla NPE"),
 ]
+# Rows whose eval was written under a tag other than --suffix. The key is the METHODS
+# name; the value is (eval directory stem, tag).
+SUFFIX_OVERRIDE = {
+    "npe-gibbs-v2strongcal-lofihifi": ("npe-gibbs-v2strongcal-lofihifi", "ep800"),
+    "npe-gibbs-v2realcal-ep400": ("npe-gibbs-v2realcal-lofihifi", "ep400"),
+    "sun-routeA-cleanpairs": ("sun-routeA-cleanpairs", "beta1"),
+}
 SETS = {"lofi_test": ("low-fi (no gap)", "#2a78d6"),
         "hifi_v2_test": ("high-fi realistic", "#eb6834"),
         "hifi_v2strong_test": ("high-fi exaggerated", "#1baf7a")}
@@ -96,7 +107,8 @@ def main():
 
     rows = []
     for m, lab in METHODS:
-        f = ROOT / (f"{m}__{a.suffix}" if a.suffix else m) / a.set / "zscore_shrinkage_data.npz"
+        stem, suf = SUFFIX_OVERRIDE.get(m, (m, a.suffix))
+        f = ROOT / (f"{stem}__{suf}" if suf else stem) / a.set / "zscore_shrinkage_data.npz"
         if not f.exists():
             continue
         d = np.load(f, allow_pickle=True)

@@ -38,7 +38,11 @@ METHODS = [
     ("npe-gibbs-800nolip-lofihifi", "Gibbs NPE, ep800, w window [0.76, 75]"),
     ("npe-gibbs-v2strongcal-lofihifi", "Gibbs NPE, ep400, hifi-calibrated w window [0.14, 13.5]"),
     ("npe-gibbs-lofihifi", "Gibbs NPE, ep100/300k (w=5.92)"),
+    ("npe-gibbs-v2strongcal-lofihifi", "Gibbs NPE, ep800, hifi-calibrated w window [0.14, 13.5]"),
+    ("npe-gibbs-v2realcal-lofihifi", "Gibbs NPE, ep800, realistic-calibrated w window [0.19, 18.6]"),
+    ("npe-gibbs-v2realcal-ep400", "Gibbs NPE, ep400, realistic-calibrated w window [0.19, 18.6]"),
     ("sun-routeA-lofihifi", "Sun et al. Route A MDN (beta per level: 1/0.14/0.10)"),
+    ("sun-routeA-cleanpairs", "Sun et al. Route A MDN, clean pairs (no Langevin), beta=1"),
     ("spin-pathD-lofihifi", "SPIN dual-flow, Path D"),
     ("spin-pathA-lofihifi", "SPIN dual-flow, Path A"),
     ("spin-singleflow-lofihifi", "SPIN single-flow (mixup)"),
@@ -55,7 +59,17 @@ ROW_H, GAP = 1.0, 0.35
 ANN_X = 0.58          # where the right-hand annotation column starts, in data units
 
 
+# Rows whose eval was written under a tag other than --suffix. The key is the METHODS
+# name; the value is (eval directory stem, tag).
+SUFFIX_OVERRIDE = {
+    "npe-gibbs-v2strongcal-lofihifi": ("npe-gibbs-v2strongcal-lofihifi", "ep800"),
+    "npe-gibbs-v2realcal-ep400": ("npe-gibbs-v2realcal-lofihifi", "ep400"),
+    "sun-routeA-cleanpairs": ("sun-routeA-cleanpairs", "beta1"),
+}
+
+
 def load(method, set_name, suffix):
+    method, suffix = SUFFIX_OVERRIDE.get(method, (method, suffix))
     d = ROOT / (f"{method}__{suffix}" if suffix else method) / set_name / "zscore_shrinkage_data.npz"
     if not d.exists():
         return None

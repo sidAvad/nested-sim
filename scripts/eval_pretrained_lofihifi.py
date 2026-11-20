@@ -217,6 +217,11 @@ def main():
                          "clamped to their own training window; Route A uses "
                          "beta_i = w_i/W_LOFI clipped to the amortised grid. Only the "
                          "hifi sets carry a residual, so lofi_test keeps its scalar w.")
+    ap.add_argument("--marginalise-w", type=int, default=0, metavar="K",
+                    help="instead of plugging in each case's w, draw K values from its "
+                         "Gamma(q/2, rate) posterior and pool the samples, which "
+                         "marginalises over w. Needs a <level>_rate field in the "
+                         "--percase-w npz. 0 = plug in the point estimate.")
     ap.add_argument("--tag", default=None,
                     help="write under <method>__<tag> instead of <method>, so a swept "
                          "w or beta does not overwrite the calibrated run")
@@ -233,13 +238,20 @@ def main():
     keys = list(ec.PARAM_KEYS_INFER)
     lo_t, hi_t = load_prior_bounds_nestedsim(keys)
 
-    pcw = None
+    pcw = pcw_rate = None
     if a.percase_w:
         d = np.load(a.percase_w)
         pcw = {k: d[k] for k in d.files if k.endswith("_test")}
+        pcw_rate = {k[:-5]: d[k] for k in d.files if k.endswith("_test_rate")}
+        q_dof = int(d["q"]) if "q" in d.files else int(d["d_eff"])
         print(f"  per-case w from {a.percase_w}: "
               + ", ".join(f"{k} n={len(v)} median {np.median(v):.3f}"
                           for k, v in pcw.items()))
+        if a.marginalise_w:
+            if not pcw_rate:
+                raise SystemExit("--marginalise-w needs <level>_rate in the npz")
+            print(f"  marginalising over w: {a.marginalise_w} Gamma({q_dof/2:g}, rate) "
+                  f"draws per case (rel. spread {np.sqrt(2/q_dof):.1%})")
 
     if a.method.startswith("npe-gibbs"):
         import eval_gibbs_sweep as eg  # noqa: E402
@@ -256,11 +268,16 @@ def main():
             a.gibbs_w if a.gibbs_w else W_PER_SET[s_], gibbs_ckpt)
 
         def logw_for(s_):
-            if pcw is not None and s_ in pcw:
-                w = np.array([clamp_w_to_window(float(v), gibbs_ckpt)[0]
-                              for v in pcw[s_]])
-                return np.log(w)
-            return np.log(w_for(s_)[0])
+            if pcw is None or s_ not in pcw:
+                return np.log(w_for(s_)[0])
+            if a.marginalise_w and s_ in pcw_rate:
+                rng = np.random.default_rng(a.seed)
+                w = rng.gamma(q_dof / 2.0, 1.0 / pcw_rate[s_][:, None],
+                              size=(len(pcw[s_]), a.marginalise_w))
+            else:
+                w = np.asarray(pcw[s_])[:, None]
+            cl = np.vectorize(lambda v: clamp_w_to_window(float(v), gibbs_ckpt)[0])
+            return np.log(cl(w))
 
         infer = lambda pats, s_: eg.run_posterior_inference_w(  # noqa: E731
             enc, flow, wemb, torch.stack([p["x_avg"] for p in pats]),
@@ -310,8 +327,10 @@ def main():
         if a.method.startswith("npe-gibbs"):
             if percase:
                 lw = logw_for(set_name)
-                setting["w"] = "per-case"
+                setting["w"] = ("per-case marginalised" if a.marginalise_w
+                                else "per-case")
                 setting["w_median"] = float(np.exp(np.median(lw)))
+                setting["w_draws"] = int(lw.shape[1]) if lw.ndim == 2 else 1
                 # compare with a tolerance: clamp_w_to_window round-trips through
                 # log/exp, so an exact != fires on almost every in-window value
                 setting["w_clamped_frac"] = float(np.mean(

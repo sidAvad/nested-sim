@@ -80,9 +80,12 @@ def run_posterior_inference_routeA(model, norm_theta, norm_x, tf, patients, beta
 
     theta_means, all_samples, accept_rates = [], [], []
     n_clipped = 0
-    for pat in patients:
+    # beta is a scalar, or a length-N array to temper each case by its own beta. The MDN
+    # takes beta through its FiLM conditioner, so per-case tempering is free here.
+    bet = np.broadcast_to(np.asarray(beta, dtype=np.float64).ravel(), (len(patients),))
+    for i, pat in enumerate(patients):
         x = pat["x_avg"].reshape(1, -1).to(device)
-        u = mdn_sample(model, x, float(beta), norm_theta, norm_x,
+        u = mdn_sample(model, x, float(bet[i]), norm_theta, norm_x,
                        num_samples=n_samples, device=device)
         in_box = ((u >= 0.0) & (u <= 1.0)).all(dim=1)
         accept_rates.append(float(in_box.float().mean()))

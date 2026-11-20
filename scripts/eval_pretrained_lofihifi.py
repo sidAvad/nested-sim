@@ -211,6 +211,12 @@ def main():
     ap.add_argument("--gibbs-epoch", type=int, default=None,
                     help="evaluate a periodic checkpoint (e.g. 400) instead of the final "
                          "weights; the epoch subdir carries its own metric and w_embed")
+    ap.add_argument("--percase-w", default=None,
+                    help="npz from percase_w.py: temper each case by its own "
+                         "w_i = d_eff/||r_i||^2 (theta-paired). Gibbs runs use w_i "
+                         "clamped to their own training window; Route A uses "
+                         "beta_i = w_i/W_LOFI clipped to the amortised grid. Only the "
+                         "hifi sets carry a residual, so lofi_test keeps its scalar w.")
     ap.add_argument("--tag", default=None,
                     help="write under <method>__<tag> instead of <method>, so a swept "
                          "w or beta does not overwrite the calibrated run")
@@ -227,6 +233,14 @@ def main():
     keys = list(ec.PARAM_KEYS_INFER)
     lo_t, hi_t = load_prior_bounds_nestedsim(keys)
 
+    pcw = None
+    if a.percase_w:
+        d = np.load(a.percase_w)
+        pcw = {k: d[k] for k in d.files if k.endswith("_test")}
+        print(f"  per-case w from {a.percase_w}: "
+              + ", ".join(f"{k} n={len(v)} median {np.median(v):.3f}"
+                          for k, v in pcw.items()))
+
     if a.method.startswith("npe-gibbs"):
         import eval_gibbs_sweep as eg  # noqa: E402
         from train_gibbs_npe import WEmbed  # noqa: E402
@@ -240,16 +254,28 @@ def main():
         enc, flow, wemb, _, _ = eg.load_gibbs_models(gibbs_ckpt, device)
         w_for = lambda s_: clamp_w_to_window(  # noqa: E731
             a.gibbs_w if a.gibbs_w else W_PER_SET[s_], gibbs_ckpt)
+
+        def logw_for(s_):
+            if pcw is not None and s_ in pcw:
+                w = np.array([clamp_w_to_window(float(v), gibbs_ckpt)[0]
+                              for v in pcw[s_]])
+                return np.log(w)
+            return np.log(w_for(s_)[0])
+
         infer = lambda pats, s_: eg.run_posterior_inference_w(  # noqa: E731
             enc, flow, wemb, torch.stack([p["x_avg"] for p in pats]),
-            np.log(w_for(s_)[0]), lo_t, hi_t, a.n_samples, device)
+            logw_for(s_), lo_t, hi_t, a.n_samples, device)
     elif a.method.startswith("sun-routeA"):
         import routeA_infer as ra  # noqa: E402
         mdn, nth, nx, tf_unit, ra_meta = ra.load_routeA(run, device)
         print(f"  routeA mdn {ra_meta['ckpt_dir']} best_val {ra_meta['best_val']}")
+        def beta_arg(s_):
+            if pcw is not None and s_ in pcw:
+                return np.clip(np.asarray(pcw[s_]) / W_LOFI, BETA_GRID_LO, BETA_GRID_HI)
+            return a.routeA_beta if a.routeA_beta else beta_for_set(s_)[0]
+
         infer = lambda pats, s_: ra.run_posterior_inference_routeA(  # noqa: E731
-            mdn, nth, nx, tf_unit, pats,
-            a.routeA_beta if a.routeA_beta else beta_for_set(s_)[0], a.n_samples, device)
+            mdn, nth, nx, tf_unit, pats, beta_arg(s_), a.n_samples, device)
     elif repo == "cv-dann-sbi":
         m = ec.load_models(run, device)
         infer = lambda pats, s_: ec.run_posterior_inference(  # noqa: E731

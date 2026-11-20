@@ -59,24 +59,35 @@ SUFFIX_OVERRIDE = {
     "npe-gibbs-v2realcal-ep400": ("npe-gibbs-v2realcal-lofihifi", "ep400"),
     "sun-routeA-cleanpairs": ("sun-routeA-cleanpairs", "beta1"),
 }
-# Per-case-tempering roster: each Gibbs row is tempered by its own
-# w_i = d_eff/||r_i||^2 and Route A by beta_i = w_i/W_LOFI, against the three
-# tempering-free baselines. lofi_test carries no residual, so it keeps its scalar w.
+# Per-case-tempering roster. The realistic-calibrated runs are the matched arms for
+# these test sets, so the four tempering choices are shown for each of its two
+# checkpoints; the real-patient-calibrated runs clamp 34-62% of the theta-subspace w
+# and are left out. Route A and the three tempering-free baselines anchor the scale.
+# The theta-subspace evals cover the hifi sets only -- lofi_test carries no residual,
+# so those rows are absent from the lofi panel by construction.
 METHODS_PERCASE = [
-    ("pcw-realcal-ep400", "Gibbs NPE, ep400, realistic-cal (per-case w)"),
-    ("pcw-realcal-ep800", "Gibbs NPE, ep800, realistic-cal (per-case w)"),
-    ("pcw-realpat-ep800", "Gibbs NPE, ep800, real-patient-cal (per-case w)"),
-    ("pcw-realpat-ep1600", "Gibbs NPE, ep1600, real-patient-cal (per-case w)"),
+    ("pcw-realcal-ep400-global", "Gibbs ep400 realistic-cal, global w"),
+    ("pcw-realcal-ep400", "Gibbs ep400, per-case w (full norm)"),
+    ("pcwth-realcal-ep400", "Gibbs ep400, per-case w (theta-subspace)"),
+    ("pcwthmarg-realcal-ep400", "Gibbs ep400, per-case w (theta-sub, marginalised)"),
+    ("pcw-realcal-ep800-global", "Gibbs ep800 realistic-cal, global w"),
+    ("pcw-realcal-ep800", "Gibbs ep800, per-case w (full norm)"),
+    ("pcwth-realcal-ep800", "Gibbs ep800, per-case w (theta-subspace)"),
+    ("pcwthmarg-realcal-ep800", "Gibbs ep800, per-case w (theta-sub, marginalised)"),
     ("pcw-routeA", "Sun et al. Route A MDN (per-case beta)"),
     ("npe-noise-lofihifi", "NPE + 11dB noise"),
     ("spin-pathD-lofihifi", "SPIN dual-flow, Path D"),
     ("npe-baseline-lofihifi", "Vanilla NPE"),
 ]
 PERCASE_OVERRIDE = {
+    "pcw-realcal-ep400-global": ("npe-gibbs-v2realcal-lofihifi", "ep400"),
     "pcw-realcal-ep400": ("npe-gibbs-v2realcal-lofihifi", "pcw-ep400"),
+    "pcwth-realcal-ep400": ("npe-gibbs-v2realcal-lofihifi", "pcwth-ep400"),
+    "pcwthmarg-realcal-ep400": ("npe-gibbs-v2realcal-lofihifi", "pcwthmarg-ep400"),
+    "pcw-realcal-ep800-global": ("npe-gibbs-v2realcal-lofihifi", ""),
     "pcw-realcal-ep800": ("npe-gibbs-v2realcal-lofihifi", "pcw-ep800"),
-    "pcw-realpat-ep800": ("npe-gibbs-800nolip-lofihifi", "pcw"),
-    "pcw-realpat-ep1600": ("npe-gibbs-1600-lofihifi", "pcw"),
+    "pcwth-realcal-ep800": ("npe-gibbs-v2realcal-lofihifi", "pcwth-ep800"),
+    "pcwthmarg-realcal-ep800": ("npe-gibbs-v2realcal-lofihifi", "pcwthmarg-ep800"),
     "pcw-routeA": ("sun-routeA-lofihifi", "pcw"),
 }
 SETS = {"lofi_test": ("low-fi (no gap)", "#2a78d6"),

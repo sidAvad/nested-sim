@@ -101,9 +101,9 @@ METHODS = {
     # at 400 and 800 epochs, all four on the real-patient-calibrated metric (w_hat 7.5539,
     # window [0.755, 75.5]) with the default sn_ceiling 2.0. Not the -nolip BNSF runs,
     # which use sn_ceiling 10 and would confound the flow with the encoder constraint.
-    # Both high-fidelity levels' w fall below the window, so they are evaluated clamped to
-    # its lower edge -- identically for all four, so the contrast holds even though the
-    # absolute level does not.
+    # hifi_v2_test's w = 1.033 sits inside the window, so the realistic level is evaluated
+    # unclamped and is directly comparable to the v2realcal family (both at w = 1.033).
+    # Only hifi_v2strong's 0.565 is clamped, to the 0.755 lower edge.
     "npe-gibbs-maf400-lofihifi": ("cv-dann-sbi", "exp-gibbs-baseline_nestedsim-lofi_cvdannsbi-ep400", None),
     "npe-gibbs-maf800-lofihifi": ("cv-dann-sbi", "exp-gibbs-baseline_nestedsim-lofi_cvdannsbi-ep800", None),
     "npe-gibbs-bnsf400-lofihifi": ("cv-dann-sbi", "exp-gibbs-baseline_nestedsim-lofi_cvdannsbi-bnsf400", None),

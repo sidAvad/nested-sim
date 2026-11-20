@@ -38,7 +38,7 @@ METHODS = [
     ("npe-gibbs-800nolip-lofihifi", "Gibbs NPE, ep800, w window [0.76, 75]"),
     ("npe-gibbs-v2strongcal-lofihifi", "Gibbs NPE, ep400, hifi-calibrated w window [0.14, 13.5]"),
     ("npe-gibbs-lofihifi", "Gibbs NPE, ep100/300k (w=5.92)"),
-    ("npe-gibbs-v2strongcal-lofihifi", "Gibbs NPE, ep800, hifi-calibrated w window [0.14, 13.5]"),
+    ("npe-gibbs-v2strongcal-ep800", "Gibbs NPE, ep800, hifi-calibrated w window [0.14, 13.5]"),
     ("npe-gibbs-v2realcal-lofihifi", "Gibbs NPE, ep800, realistic-calibrated w window [0.19, 18.6]"),
     ("npe-gibbs-v2realcal-ep400", "Gibbs NPE, ep400, realistic-calibrated w window [0.19, 18.6]"),
     ("sun-routeA-lofihifi", "Sun et al. Route A MDN (beta per level: 1/0.14/0.10)"),
@@ -62,7 +62,7 @@ ANN_X = 0.58          # where the right-hand annotation column starts, in data u
 # Rows whose eval was written under a tag other than --suffix. The key is the METHODS
 # name; the value is (eval directory stem, tag).
 SUFFIX_OVERRIDE = {
-    "npe-gibbs-v2strongcal-lofihifi": ("npe-gibbs-v2strongcal-lofihifi", "ep800"),
+    "npe-gibbs-v2strongcal-ep800": ("npe-gibbs-v2strongcal-lofihifi", "ep800"),
     "npe-gibbs-v2realcal-ep400": ("npe-gibbs-v2realcal-lofihifi", "ep400"),
     "sun-routeA-cleanpairs": ("sun-routeA-cleanpairs", "beta1"),
 }

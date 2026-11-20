@@ -56,6 +56,26 @@ SUFFIX_OVERRIDE = {
     "npe-gibbs-v2realcal-ep400": ("npe-gibbs-v2realcal-lofihifi", "ep400"),
     "sun-routeA-cleanpairs": ("sun-routeA-cleanpairs", "beta1"),
 }
+# Per-case-tempering roster: each Gibbs row is tempered by its own
+# w_i = d_eff/||r_i||^2 and Route A by beta_i = w_i/W_LOFI, against the three
+# tempering-free baselines. lofi_test carries no residual, so it keeps its scalar w.
+METHODS_PERCASE = [
+    ("pcw-realcal-ep400", "Gibbs NPE, ep400, realistic-cal (per-case w)"),
+    ("pcw-realcal-ep800", "Gibbs NPE, ep800, realistic-cal (per-case w)"),
+    ("pcw-realpat-ep800", "Gibbs NPE, ep800, real-patient-cal (per-case w)"),
+    ("pcw-realpat-ep1600", "Gibbs NPE, ep1600, real-patient-cal (per-case w)"),
+    ("pcw-routeA", "Sun et al. Route A MDN (per-case beta)"),
+    ("npe-noise-lofihifi", "NPE + 11dB noise"),
+    ("spin-pathD-lofihifi", "SPIN dual-flow, Path D"),
+    ("npe-baseline-lofihifi", "Vanilla NPE"),
+]
+PERCASE_OVERRIDE = {
+    "pcw-realcal-ep400": ("npe-gibbs-v2realcal-lofihifi", "pcw-ep400"),
+    "pcw-realcal-ep800": ("npe-gibbs-v2realcal-lofihifi", "pcw-ep800"),
+    "pcw-realpat-ep800": ("npe-gibbs-800nolip-lofihifi", "pcw"),
+    "pcw-realpat-ep1600": ("npe-gibbs-1600-lofihifi", "pcw"),
+    "pcw-routeA": ("sun-routeA-lofihifi", "pcw"),
+}
 SETS = {"lofi_test": ("low-fi (no gap)", "#2a78d6"),
         "hifi_v2_test": ("high-fi realistic", "#eb6834"),
         "hifi_v2strong_test": ("high-fi exaggerated", "#1baf7a")}
@@ -102,7 +122,15 @@ def main():
                     help="param: one point per parameter, R^2 across the 1000 cases. "
                          "case: one point per case, R^2 across the 24 parameters "
                          "against the prior-mean predictor.")
+    ap.add_argument("--roster", default="full", choices=["full", "percase"])
+    ap.add_argument("--out-sub", default="",
+                    help="subfolder of scores_lofihifi to write into")
     a = ap.parse_args()
+    global METHODS, SUFFIX_OVERRIDE, OUT_DIR
+    if a.roster == "percase":
+        METHODS, SUFFIX_OVERRIDE = METHODS_PERCASE, PERCASE_OVERRIDE
+    if a.out_sub:
+        OUT_DIR = OUT_DIR / a.out_sub
 
     import eval_pretrained_lofihifi as ep  # noqa: E402  (prior box + log dims)
 

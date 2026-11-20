@@ -312,8 +312,11 @@ def main():
                 lw = logw_for(set_name)
                 setting["w"] = "per-case"
                 setting["w_median"] = float(np.exp(np.median(lw)))
+                # compare with a tolerance: clamp_w_to_window round-trips through
+                # log/exp, so an exact != fires on almost every in-window value
                 setting["w_clamped_frac"] = float(np.mean(
-                    [clamp_w_to_window(float(v), gibbs_ckpt)[0] != float(v)
+                    [not np.isclose(clamp_w_to_window(float(v), gibbs_ckpt)[0],
+                                    float(v), rtol=1e-9)
                      for v in pcw[set_name]]))
             else:
                 wu, wa = w_for(set_name)

@@ -20,6 +20,7 @@ reaches by throwing most of its draws away.
 Usage: python scripts/plot_pretrained_scores_lofihifi.py [--suffix scored] [--metric all]
 """
 import argparse
+import csv
 import json
 from pathlib import Path
 
@@ -321,20 +322,27 @@ def fig_zscore(rows, suffix):
 def write_table(rows, path):
     cols = ["method", "set", "setting", "accept", "degenerate", "crps", "crps_skill",
             "crps_raw_skill", "is95", "is_skill", "width95", "penalty95", "cov95", "medabsz"]
-    lines = [",".join(cols)]
+    # csv.writer, not manual joins: both the method labels and the per-case setting
+    # strings contain commas, so an unquoted table cannot be parsed back reliably.
+    out = []
     for m, label in order_methods(rows):
         for s, _, _ in SETS:
             v = rows.get((m, s))
             if v is None:
                 continue
-            lines.append(",".join([label, s, v["setting"], f"{v['accept']:.4f}",
-                                   str(v["degenerate"]), f"{v['crps']:.5f}",
-                                   f"{v['crps_skill']:.4f}", f"{v['crps_raw_skill']:.4f}",
-                                   f"{v['is']:.5f}", f"{v['is_skill']:.4f}",
-                                   f"{v['width']:.5f}", f"{v['penalty']:.5f}",
-                                   f"{v['cov95']:.4f}", f"{v['medabsz']:.3f}"]))
-    path.write_text("\n".join(lines) + "\n")
-    print("\n".join(lines))
+            out.append([label, s, v["setting"], f"{v['accept']:.4f}",
+                        v["degenerate"], f"{v['crps']:.5f}",
+                        f"{v['crps_skill']:.4f}", f"{v['crps_raw_skill']:.4f}",
+                        f"{v['is']:.5f}", f"{v['is_skill']:.4f}",
+                        f"{v['width']:.5f}", f"{v['penalty']:.5f}",
+                        f"{v['cov95']:.4f}", f"{v['medabsz']:.3f}"])
+    with open(path, "w", newline="") as fh:
+        wr = csv.writer(fh)
+        wr.writerow(cols)
+        wr.writerows(out)
+    for r in out:
+        print("  %-52s %-20s CRPS %+8s  IS %+8s  cov %6s  width %6s"
+              % (r[0][:52], r[1], r[6], r[9], r[12], r[10]))
     print("wrote", path)
 
 

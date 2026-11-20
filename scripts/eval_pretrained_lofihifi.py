@@ -306,14 +306,31 @@ def main():
 
     for set_name in a.sets.split(","):
         setting = {}
+        percase = pcw is not None and set_name in pcw
         if a.method.startswith("npe-gibbs"):
-            wu, wa = w_for(set_name)
-            setting["w"] = wu
-            setting["w_unclamped"] = wa
+            if percase:
+                lw = logw_for(set_name)
+                setting["w"] = "per-case"
+                setting["w_median"] = float(np.exp(np.median(lw)))
+                setting["w_clamped_frac"] = float(np.mean(
+                    [clamp_w_to_window(float(v), gibbs_ckpt)[0] != float(v)
+                     for v in pcw[set_name]]))
+            else:
+                wu, wa = w_for(set_name)
+                setting["w"] = wu
+                setting["w_unclamped"] = wa
         if a.method.startswith("sun-routeA"):
-            bc, braw = beta_for_set(set_name)
-            setting["beta"] = float(a.routeA_beta if a.routeA_beta else bc)
-            setting["beta_unclipped"] = float(braw)
+            if percase:
+                b = beta_arg(set_name)
+                setting["beta"] = "per-case"
+                setting["beta_median"] = float(np.median(b))
+                raw = np.asarray(pcw[set_name]) / W_LOFI
+                setting["beta_clipped_frac"] = float(np.mean(
+                    (raw < BETA_GRID_LO) | (raw > BETA_GRID_HI)))
+            else:
+                bc, braw = beta_for_set(set_name)
+                setting["beta"] = float(a.routeA_beta if a.routeA_beta else bc)
+                setting["beta_unclipped"] = float(braw)
         pats = build_patients(set_name, a.n, stats, a.seed)
         _, samples, accept = infer(pats, set_name)  # (N, n_samples, 24), physical units
         post_mean, post_std = samples.mean(1), samples.std(1)

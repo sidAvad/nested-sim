@@ -116,6 +116,12 @@ METHODS = {
     "npe-gibbs-lr29proj-lofihifi": ("cv-dann-sbi", "exp-gibbs-v2realcal-lr29proj_nestedsim-lofi_cvdannsbi-bnsf800", None),
     "npe-gibbs-lr29full-lofihifi": ("cv-dann-sbi", "exp-gibbs-v2realcal-lr29full_nestedsim-lofi_cvdannsbi-bnsf800", None),
     "npe-gibbs-wpaired-lofihifi": ("cv-dann-sbi", "exp-gibbs-wpaired_nestedsim-lofi_cvdannsbi-bnsf800", None),
+    # Route A's mixture head (133,640 density params) on our CNN encoder, trained with
+    # their optimizer settings: head lr 1e-3 against the 1e-4 every other arm uses. The
+    # only arm at a different learning rate, so the only one that can separate "the
+    # hifi/lofi trajectory is a property of the objective" from "it depends on how fast
+    # you optimise". Unbounded support, so draws outside the prior box are rejected.
+    "npe-gibbs-mdn-lofihifi": ("cv-dann-sbi", "exp-gibbs-v2realcal-mdn_nestedsim-lofi_cvdannsbi-mdn800", None),
 }
 
 # Per-level Gibbs tolerance, from the truth-anchored calibration (2026-11-16): one lofi
@@ -283,6 +289,11 @@ def main():
         import eval_gibbs_sweep as eg  # noqa: E402
         from train_gibbs_npe import WEmbed  # noqa: E402
         sys.modules["__main__"].WEmbed = WEmbed  # w_embed.pt pickled WEmbed from train_gibbs_npe's __main__
+        # --flow-arch mdn pickles WPassthrough as its w_embed and a ConditionalMDN as its
+        # flow, both from train_gibbs_npe's __main__, so both names must resolve here too
+        from mdn_flow import WPassthrough, ConditionalMDN, ResBlock  # noqa: E402
+        for _c in (WPassthrough, ConditionalMDN, ResBlock):
+            setattr(sys.modules["__main__"], _c.__name__, _c)
         gibbs_ckpt = eg.resolve_gibbs_ckpt(run)
         if a.gibbs_epoch:
             gibbs_ckpt = gibbs_ckpt / f"epoch{a.gibbs_epoch:04d}"

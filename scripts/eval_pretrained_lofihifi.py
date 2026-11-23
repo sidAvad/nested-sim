@@ -108,6 +108,14 @@ METHODS = {
     "npe-gibbs-maf800-lofihifi": ("cv-dann-sbi", "exp-gibbs-baseline_nestedsim-lofi_cvdannsbi-ep800", None),
     "npe-gibbs-bnsf400-lofihifi": ("cv-dann-sbi", "exp-gibbs-baseline_nestedsim-lofi_cvdannsbi-bnsf400", None),
     "npe-gibbs-bnsf800-lofihifi": ("cv-dann-sbi", "exp-gibbs-baseline_nestedsim-lofi_cvdannsbi-bnsf800", None),
+    # Noise-model arms on the v2realcal frozen metric. lr29proj/lr29full add the rank-29
+    # low-rank enrichment Sigma_c = I + U diag(a) U^T (projected / full); wpaired keeps
+    # Sigma_c = I and only recentres the w window on the theta-paired w = 0.713, so it is
+    # the w-only control that makes the two lr29 arms interpretable. Target epoch with
+    # --gibbs-epoch; all three carry epoch0100..epoch0800 snapshots.
+    "npe-gibbs-lr29proj-lofihifi": ("cv-dann-sbi", "exp-gibbs-v2realcal-lr29proj_nestedsim-lofi_cvdannsbi-bnsf800", None),
+    "npe-gibbs-lr29full-lofihifi": ("cv-dann-sbi", "exp-gibbs-v2realcal-lr29full_nestedsim-lofi_cvdannsbi-bnsf800", None),
+    "npe-gibbs-wpaired-lofihifi": ("cv-dann-sbi", "exp-gibbs-wpaired_nestedsim-lofi_cvdannsbi-bnsf800", None),
 }
 
 # Per-level Gibbs tolerance, from the truth-anchored calibration (2026-11-16): one lofi

@@ -109,6 +109,36 @@ ARCH_OVERRIDE = {
     "arch-v2realcal-ep400": ("npe-gibbs-v2realcal-lofihifi", "ep400"),
     "arch-v2realcal-ep800": ("npe-gibbs-v2realcal-lofihifi", ""),
 }
+# Noise-model roster. All five Gibbs arms share the same frozen v2realcal metric
+# (ell 30.8602, d_eff 156, w_hat 1.86258), so M is held fixed and only the noise model
+# and its w window vary: v2realcal is Sigma_c = I on [0.186, 18.6]; wpaired is Sigma_c = I
+# recentred on the theta-paired w = 0.713, window [0.071, 7.13], making it the w-only
+# control; lr29proj/lr29full add the rank-29 enrichment Sigma_c = I + U diag(a) U^T
+# (projected / full), windows [0.134, 13.4] and [0.250, 25.0]. Every one of those windows
+# contains both hifi levels' calibrated w (1.033 and 0.565), so unlike the arch roster
+# neither high-fidelity level is clamped on any arm here.
+METHODS_NOISE = [
+    ("noise-v2realcal-ep400", "Gibbs NSF ep400, Sigma_c = I (baseline)"),
+    ("noise-v2realcal-ep800", "Gibbs NSF ep800, Sigma_c = I (baseline)"),
+    ("noise-wpaired-ep400", "Gibbs NSF ep400, w-recentred on 0.713, Sigma_c = I"),
+    ("noise-wpaired-ep800", "Gibbs NSF ep800, w-recentred on 0.713, Sigma_c = I"),
+    ("noise-lr29proj-ep400", "Gibbs NSF ep400, rank-29 Sigma_c (projected)"),
+    ("noise-lr29proj-ep800", "Gibbs NSF ep800, rank-29 Sigma_c (projected)"),
+    ("noise-lr29full-ep400", "Gibbs NSF ep400, rank-29 Sigma_c (full)"),
+    ("noise-lr29full-ep800", "Gibbs NSF ep800, rank-29 Sigma_c (full)"),
+    ("sun-routeA-lofihifi", "Sun et al. Route A MDN (beta per level: 1/0.14/0.10)"),
+    ("npe-baseline-lofihifi", "Vanilla NPE"),
+]
+NOISE_OVERRIDE = {
+    "noise-v2realcal-ep400": ("npe-gibbs-v2realcal-lofihifi", "ep400"),
+    "noise-v2realcal-ep800": ("npe-gibbs-v2realcal-lofihifi", ""),
+    "noise-wpaired-ep400": ("npe-gibbs-wpaired-lofihifi", "ep400"),
+    "noise-wpaired-ep800": ("npe-gibbs-wpaired-lofihifi", "ep800"),
+    "noise-lr29proj-ep400": ("npe-gibbs-lr29proj-lofihifi", "ep400"),
+    "noise-lr29proj-ep800": ("npe-gibbs-lr29proj-lofihifi", "ep800"),
+    "noise-lr29full-ep400": ("npe-gibbs-lr29full-lofihifi", "ep400"),
+    "noise-lr29full-ep800": ("npe-gibbs-lr29full-lofihifi", "ep800"),
+}
 SETS = [("lofi_test", "low-fi (no gap)", "#2a78d6"),
         ("hifi_v2_test", "high-fi realistic", "#eb6834"),
         ("hifi_v2strong_test", "high-fi exaggerated", "#1baf7a")]
@@ -374,7 +404,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--suffix", default="scored")
     ap.add_argument("--metric", default="all", choices=["all", "scores", "zscore"])
-    ap.add_argument("--roster", default="full", choices=["full", "percase", "arch"])
+    ap.add_argument("--roster", default="full",
+                    choices=["full", "percase", "arch", "noise"])
     ap.add_argument("--out-sub", default="",
                     help="subfolder of scores_lofihifi to write into")
     a = ap.parse_args()
@@ -383,6 +414,8 @@ def main():
         METHODS, SUFFIX_OVERRIDE = METHODS_PERCASE, PERCASE_OVERRIDE
     elif a.roster == "arch":
         METHODS, SUFFIX_OVERRIDE = METHODS_ARCH, ARCH_OVERRIDE
+    elif a.roster == "noise":
+        METHODS, SUFFIX_OVERRIDE = METHODS_NOISE, NOISE_OVERRIDE
     if a.out_sub:
         OUT_DIR = OUT_DIR / a.out_sub
     rows = gather(a.suffix)

@@ -227,6 +227,11 @@ def main():
                          "W_PER_SET; use to reproduce an older single-w run")
     ap.add_argument("--routeA-beta", type=float, default=None,
                     help="force one beta for every set, overriding beta = w/W_LOFI")
+    ap.add_argument("--ckpt-ts", default=None,
+                    help="override the METHODS entry's checkpoint_ts, e.g. "
+                         "20261019-121007_calib_ep100, to evaluate a periodic SPIN/NPE "
+                         "snapshot instead of the final weights. Gibbs runs use "
+                         "--gibbs-epoch instead.")
     ap.add_argument("--gibbs-epoch", type=int, default=None,
                     help="evaluate a periodic checkpoint (e.g. 400) instead of the final "
                          "weights; the epoch subdir carries its own metric and w_embed")
@@ -247,6 +252,8 @@ def main():
     a = ap.parse_args()
 
     repo, run, ckpt = METHODS[a.method]
+    if a.ckpt_ts:
+        ckpt = a.ckpt_ts
     # the posterior draws are Monte Carlo, so without this a re-run perturbs every
     # reported number by sampling noise alone
     torch.manual_seed(a.seed)

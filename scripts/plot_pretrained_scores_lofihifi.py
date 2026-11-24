@@ -156,6 +156,8 @@ METHODS_BINW = [
     ("binw-control-perbin", "Gibbs NSF ep400, window [0.3, 30], per-bin w"),
     ("binw-film-single", "Gibbs NSF ep400, rank-32 Sigma_c + FiLM, scalar w"),
     ("binw-film-perbin", "Gibbs NSF ep400, rank-32 Sigma_c + FiLM, per-bin w"),
+    ("binw-lr29full-single", "Gibbs NSF ep800, rank-29 Sigma_c (v2realcal), scalar w"),
+    ("binw-lr29full-perbin", "Gibbs NSF ep800, rank-29 Sigma_c (v2realcal), per-bin w"),
     ("sun-routeA-lofihifi", "Sun et al. Route A MDN (beta per level: 1/0.14/0.10)"),
     ("spin-pathD-lofihifi", "SPIN dual-flow, Path D"),
     ("npe-noise-lofihifi", "NPE + 11dB noise"),
@@ -170,6 +172,11 @@ BINW_OVERRIDE = {
     "binw-control-perbin": ("npe-gibbs-realptcal-w03to30-lofihifi", "ep400_binw"),
     "binw-film-single": ("npe-gibbs-realptcal-r29film3e4-lofihifi", "ep400"),
     "binw-film-perbin": ("npe-gibbs-realptcal-r29film3e4-lofihifi", "ep400_binw"),
+    # lr29full trains on the v2realcal metric (d_eff 156), not the real-patient one, so
+    # its per-bin w comes from percase_w_binned.npz -- a w table is tied to the metric
+    # that defined phi, exactly as a correction is.
+    "binw-lr29full-single": ("npe-gibbs-lr29full-lofihifi", "ep800"),
+    "binw-lr29full-perbin": ("npe-gibbs-lr29full-lofihifi", "ep800_binw"),
 }
 SETS = [("lofi_test", "low-fi (no gap)", "#2a78d6"),
         ("hifi_v2_test", "high-fi realistic", "#eb6834"),

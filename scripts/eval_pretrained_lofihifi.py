@@ -304,9 +304,19 @@ def main():
         from mdn_flow import WPassthrough, ConditionalMDN, ResBlock  # noqa: E402
         for _c in (WPassthrough, ConditionalMDN, ResBlock):
             setattr(sys.modules["__main__"], _c.__name__, _c)
-        gibbs_ckpt = eg.resolve_gibbs_ckpt(run, a.gibbs_epoch)
+        # --ckpt-ts has to be honoured here too, not just on the SPIN paths: a run with
+        # relaunches holds the same epoch under several timestamps, only one of which is
+        # the completed trajectory, and resolve_gibbs_ckpt returns the LAST of them.
+        if ckpt:
+            gibbs_ckpt = eg.OUTPUTS_ROOT / run / "checkpoints" / ckpt
+            if not gibbs_ckpt.is_dir():
+                raise SystemExit(f"--ckpt-ts: no such directory {gibbs_ckpt}")
+        else:
+            gibbs_ckpt = eg.resolve_gibbs_ckpt(run, a.gibbs_epoch)
         if a.gibbs_epoch:
             gibbs_ckpt = gibbs_ckpt / f"epoch{a.gibbs_epoch:04d}"
+            if not (gibbs_ckpt / "flow_net.pt").exists():
+                raise SystemExit(f"no flow_net.pt under {gibbs_ckpt}")
         print(f"  gibbs ckpt {gibbs_ckpt}")
         enc, flow, wemb, _, _ = eg.load_gibbs_models(gibbs_ckpt, device)
         w_for = lambda s_: clamp_w_to_window(  # noqa: E731

@@ -340,7 +340,9 @@ def fig_scores(rows, suffix, set_name, set_label, color):
                  family="monospace", zorder=4)
     axv.set_xlim(0, CRPS_CLIP * 1.33)
     axv.set_xticks(np.arange(0, CRPS_CLIP + 0.01, 0.5))
-    axb.set_xlim(0, xmax * 1.62)
+    # Room for the longest annotation: the per-case rows carry both a median w and a
+    # clamped share, which overran the old 1.62 margin and truncated mid-word.
+    axb.set_xlim(0, xmax * 1.80)
     axv.axvline(1.0, color=INK, lw=1.0, ls="--", zorder=2)
     axv.text(1.0, n - 0.32, " prior", fontsize=8, color=INK, va="bottom")
     axv.text(CRPS_CLIP + 0.06, n - 0.32, "med / mean", fontsize=7.5, color=MUTED,

@@ -158,6 +158,8 @@ METHODS_BINW = [
     ("binw-film-perbin", "Gibbs NSF ep400, rank-32 Sigma_c + FiLM, per-bin w"),
     ("binw-lr29full-single", "Gibbs NSF ep800, rank-29 Sigma_c (v2realcal), scalar w"),
     ("binw-lr29full-perbin", "Gibbs NSF ep800, rank-29 Sigma_c (v2realcal), per-bin w"),
+    ("binw-v2realcal-single", "Gibbs NSF ep400, v2realcal metric, Sigma_c = I, scalar w"),
+    ("binw-v2realcal-perbin", "Gibbs NSF ep400, v2realcal metric, Sigma_c = I, per-bin w"),
     ("sun-routeA-lofihifi", "Sun et al. Route A MDN (beta per level: 1/0.14/0.10)"),
     ("spin-pathD-lofihifi", "SPIN dual-flow, Path D"),
     ("npe-noise-lofihifi", "NPE + 11dB noise"),
@@ -177,6 +179,11 @@ BINW_OVERRIDE = {
     # that defined phi, exactly as a correction is.
     "binw-lr29full-single": ("npe-gibbs-lr29full-lofihifi", "ep800"),
     "binw-lr29full-perbin": ("npe-gibbs-lr29full-lofihifi", "ep800_binw"),
+    # Same architecture, Sigma_c = I and epoch as the bnsf400 rows, differing only in the
+    # metric's calibration source, so the pair brackets what calibrating M on real
+    # patients rather than on hifi-realistic sims is worth.
+    "binw-v2realcal-single": ("npe-gibbs-v2realcal-lofihifi", "ep400"),
+    "binw-v2realcal-perbin": ("npe-gibbs-v2realcal-lofihifi", "ep400_binw"),
 }
 SETS = [("lofi_test", "low-fi (no gap)", "#2a78d6"),
         ("hifi_v2_test", "high-fi realistic", "#eb6834"),

@@ -122,6 +122,13 @@ METHODS = {
     # hifi/lofi trajectory is a property of the objective" from "it depends on how fast
     # you optimise". Unbounded support, so draws outside the prior box are rejected.
     "npe-gibbs-mdn-lofihifi": ("cv-dann-sbi", "exp-gibbs-v2realcal-mdn_nestedsim-lofi_cvdannsbi-mdn800", None),
+    # Real-patient-calibrated metric (d_eff 180, w_hat 7.554) with the w window narrowed
+    # to [0.3, 30] so every eval w below sits unclamped. w03to30 is the window-only
+    # control; r29film3e4 adds the rank-32 correction refit on that metric, FiLM
+    # conditioning on log w, and lr 3e-4 with a cosine schedule. Target epoch with
+    # --gibbs-epoch.
+    "npe-gibbs-realptcal-w03to30-lofihifi": ("cv-dann-sbi", "exp-gibbs-realptcal-w03to30_nestedsim-lofi_cvdannsbi-bnsf800", None),
+    "npe-gibbs-realptcal-r29film3e4-lofihifi": ("cv-dann-sbi", "exp-gibbs-realptcal-r29film3e4_nestedsim-lofi_cvdannsbi-bnsf800", None),
 }
 
 # Per-level Gibbs tolerance, from the truth-anchored calibration (2026-11-16): one lofi

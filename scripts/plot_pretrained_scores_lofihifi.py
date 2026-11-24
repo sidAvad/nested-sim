@@ -149,8 +149,8 @@ NOISE_OVERRIDE = {
 # defined from a residual, so the lofi panel carries no rows.
 METHODS_BINW = [
     ("binw-bnsf800-perbin", "Gibbs NSF ep800, real-pt metric, Sigma_c = I"),
-    ("binw-control-perbin", "Gibbs NSF ep400, real-pt metric, window [0.3, 30]"),
-    ("binw-film-perbin", "Gibbs NSF ep400, real-pt metric, rank-32 Sigma_c + FiLM"),
+    ("binw-control-perbin", "Gibbs NSF ep600, real-pt metric, window [0.3, 30]"),
+    ("binw-film-perbin", "Gibbs NSF ep600, real-pt metric, rank-32 Sigma_c + FiLM"),
     ("binw-lr29full-perbin", "Gibbs NSF ep800, v2realcal metric, rank-29 Sigma_c"),
     ("binw-v2realcal-perbin", "Gibbs NSF ep400, v2realcal metric, Sigma_c = I"),
     ("sun-routeA-lofihifi", "Sun et al. Route A MDN (beta per level: 1/0.14/0.10)"),
@@ -160,8 +160,8 @@ METHODS_BINW = [
 ]
 BINW_OVERRIDE = {
     "binw-bnsf800-perbin": ("npe-gibbs-bnsf800-lofihifi", "ep800_binw"),
-    "binw-control-perbin": ("npe-gibbs-realptcal-w03to30-lofihifi", "ep400_binw"),
-    "binw-film-perbin": ("npe-gibbs-realptcal-r29film3e4-lofihifi", "ep400_binwSig"),
+    "binw-control-perbin": ("npe-gibbs-realptcal-w03to30-lofihifi", "ep600_binw"),
+    "binw-film-perbin": ("npe-gibbs-realptcal-r29film3e4-lofihifi", "ep600_binwSig"),
     "binw-lr29full-perbin": ("npe-gibbs-lr29full-lofihifi", "ep800_binwSig"),
     "binw-v2realcal-perbin": ("npe-gibbs-v2realcal-lofihifi", "ep400_binw"),
 }

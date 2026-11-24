@@ -149,6 +149,7 @@ NOISE_OVERRIDE = {
 # defined from a residual, so the lofi panel carries no rows.
 METHODS_BINW = [
     ("binw-bnsf800-perbin", "Gibbs NSF ep800, real-pt metric, Sigma_c = I"),
+    ("binw-nolip800-perbin", "Gibbs NSF ep800, real-pt metric, no Lipschitz ceiling"),
     ("binw-bnsf1600-perbin", "Gibbs NSF ep1600, real-pt metric, no Lipschitz ceiling"),
     ("binw-control-perbin", "Gibbs NSF ep600, real-pt metric, window [0.3, 30]"),
     ("binw-film-perbin", "Gibbs NSF ep600, real-pt metric, rank-32 Sigma_c + FiLM"),
@@ -163,6 +164,9 @@ BINW_OVERRIDE = {
     "binw-bnsf800-perbin": ("npe-gibbs-bnsf800-lofihifi", "ep800_binw"),
     # A separate lineage from bnsf800: resumed from bnsf800-nolip, so it differs in the
     # encoder's Lipschitz constraint as well as in epochs. Same metric (d_eff 180).
+    # bnsf1600-nolip's own ancestor at ep800: epoch-matched to bnsf800, so the pair
+    # isolates the Lipschitz ceiling from the extra 800 epochs.
+    "binw-nolip800-perbin": ("npe-gibbs-800nolip-lofihifi", "ep800_binw"),
     "binw-bnsf1600-perbin": ("npe-gibbs-1600-lofihifi", "ep1600_binw"),
     "binw-control-perbin": ("npe-gibbs-realptcal-w03to30-lofihifi", "ep600_binw"),
     "binw-film-perbin": ("npe-gibbs-realptcal-r29film3e4-lofihifi", "ep600_binwSig"),

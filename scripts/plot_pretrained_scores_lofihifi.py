@@ -139,50 +139,30 @@ NOISE_OVERRIDE = {
     "noise-lr29full-ep400": ("npe-gibbs-lr29full-lofihifi", "ep400"),
     "noise-lr29full-ep800": ("npe-gibbs-lr29full-lofihifi", "ep800"),
 }
-# Per-bin-w roster. Each Gibbs arm appears twice -- once at the per-level calibrated
-# scalar w, once with w_i read off the case's Prv-max bin (percase_w_binned_realpt.npz,
-# d_eff 180, anchored so the harmonic mean reproduces the scalar) -- so the pair isolates
-# what conditioning w on the observation buys, with weights and cases held fixed. The
-# bnsf arms train on the real-patient metric with window [0.755, 75.5] and clamp 34.6% /
-# 41.9% of the per-bin w; the two ep400 arms from the [0.3, 30] window clamp none, which
-# is what makes the four-arm comparison able to separate clamping from the lever itself.
-# Per-bin w is defined from a residual, so the lofi panel carries only the scalar rows.
+# Per-bin-w roster: one row per model, per-bin w only, at the highest epoch evaluated.
+# w_i is read off the case's Prv-max bin (edges 34.325 / 61.245 mmHg) and anchored so the
+# harmonic mean reproduces that level's calibrated scalar, so the level is unchanged and
+# only the between-bin distribution of w differs from a scalar run. Arms carrying a
+# low-rank Sigma_c take the table built in their OWN noise geometry (q = r^T Sigma_c^-1 r,
+# the _sig_ files); Sigma_c = I arms take the Euclidean one. Both tables are tied to the
+# metric that defined phi, so each arm uses the one matching its own metric. Per-bin w is
+# defined from a residual, so the lofi panel carries no rows.
 METHODS_BINW = [
-    ("binw-bnsf400-single", "Gibbs NSF ep400, real-pt metric, scalar w"),
-    ("binw-bnsf400-perbin", "Gibbs NSF ep400, real-pt metric, per-bin w"),
-    ("binw-bnsf800-single", "Gibbs NSF ep800, real-pt metric, scalar w"),
-    ("binw-bnsf800-perbin", "Gibbs NSF ep800, real-pt metric, per-bin w"),
-    ("binw-control-single", "Gibbs NSF ep400, window [0.3, 30], scalar w"),
-    ("binw-control-perbin", "Gibbs NSF ep400, window [0.3, 30], per-bin w"),
-    ("binw-film-single", "Gibbs NSF ep400, rank-32 Sigma_c + FiLM, scalar w"),
-    ("binw-film-perbin", "Gibbs NSF ep400, rank-32 Sigma_c + FiLM, per-bin w"),
-    ("binw-lr29full-single", "Gibbs NSF ep800, rank-29 Sigma_c (v2realcal), scalar w"),
-    ("binw-lr29full-perbin", "Gibbs NSF ep800, rank-29 Sigma_c (v2realcal), per-bin w"),
-    ("binw-v2realcal-single", "Gibbs NSF ep400, v2realcal metric, Sigma_c = I, scalar w"),
-    ("binw-v2realcal-perbin", "Gibbs NSF ep400, v2realcal metric, Sigma_c = I, per-bin w"),
+    ("binw-bnsf800-perbin", "Gibbs NSF ep800, real-pt metric, Sigma_c = I"),
+    ("binw-control-perbin", "Gibbs NSF ep400, real-pt metric, window [0.3, 30]"),
+    ("binw-film-perbin", "Gibbs NSF ep400, real-pt metric, rank-32 Sigma_c + FiLM"),
+    ("binw-lr29full-perbin", "Gibbs NSF ep800, v2realcal metric, rank-29 Sigma_c"),
+    ("binw-v2realcal-perbin", "Gibbs NSF ep400, v2realcal metric, Sigma_c = I"),
     ("sun-routeA-lofihifi", "Sun et al. Route A MDN (beta per level: 1/0.14/0.10)"),
     ("spin-pathD-lofihifi", "SPIN dual-flow, Path D"),
     ("npe-noise-lofihifi", "NPE + 11dB noise"),
     ("npe-baseline-lofihifi", "Vanilla NPE"),
 ]
 BINW_OVERRIDE = {
-    "binw-bnsf400-single": ("npe-gibbs-bnsf400-lofihifi", "arch2x2"),
-    "binw-bnsf400-perbin": ("npe-gibbs-bnsf400-lofihifi", "ep400_binw"),
-    "binw-bnsf800-single": ("npe-gibbs-bnsf800-lofihifi", "arch2x2"),
     "binw-bnsf800-perbin": ("npe-gibbs-bnsf800-lofihifi", "ep800_binw"),
-    "binw-control-single": ("npe-gibbs-realptcal-w03to30-lofihifi", "ep400"),
     "binw-control-perbin": ("npe-gibbs-realptcal-w03to30-lofihifi", "ep400_binw"),
-    "binw-film-single": ("npe-gibbs-realptcal-r29film3e4-lofihifi", "ep400"),
-    "binw-film-perbin": ("npe-gibbs-realptcal-r29film3e4-lofihifi", "ep400_binw"),
-    # lr29full trains on the v2realcal metric (d_eff 156), not the real-patient one, so
-    # its per-bin w comes from percase_w_binned.npz -- a w table is tied to the metric
-    # that defined phi, exactly as a correction is.
-    "binw-lr29full-single": ("npe-gibbs-lr29full-lofihifi", "ep800"),
-    "binw-lr29full-perbin": ("npe-gibbs-lr29full-lofihifi", "ep800_binw"),
-    # Same architecture, Sigma_c = I and epoch as the bnsf400 rows, differing only in the
-    # metric's calibration source, so the pair brackets what calibrating M on real
-    # patients rather than on hifi-realistic sims is worth.
-    "binw-v2realcal-single": ("npe-gibbs-v2realcal-lofihifi", "ep400"),
+    "binw-film-perbin": ("npe-gibbs-realptcal-r29film3e4-lofihifi", "ep400_binwSig"),
+    "binw-lr29full-perbin": ("npe-gibbs-lr29full-lofihifi", "ep800_binwSig"),
     "binw-v2realcal-perbin": ("npe-gibbs-v2realcal-lofihifi", "ep400_binw"),
 }
 SETS = [("lofi_test", "low-fi (no gap)", "#2a78d6"),

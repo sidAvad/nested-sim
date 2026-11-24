@@ -149,6 +149,11 @@ NOISE_OVERRIDE = {
 # defined from a residual, so the lofi panel carries no rows.
 METHODS_BINW = [
     ("binw-bnsf800-perbin", "Gibbs NSF ep800, real-pt metric, Sigma_c = I"),
+    # The one deliberate exception to one-row-per-model: ep600 sits on the hifi Pareto
+    # frontier where ep800 is dominated, and its Laplace width ratio (MED inf 0.956 vs
+    # 0.943) is the closer of the two to the band the gold SMC puts the exact Gibbs
+    # posterior in. See experiments.md.
+    ("binw-bnsf600-perbin", "Gibbs NSF ep600, real-pt metric, Sigma_c = I"),
     ("binw-nolip800-perbin", "Gibbs NSF ep800, real-pt metric, no Lipschitz ceiling"),
     ("binw-bnsf1600-perbin", "Gibbs NSF ep1600, real-pt metric, no Lipschitz ceiling"),
     ("binw-control-perbin", "Gibbs NSF ep600, real-pt metric, window [0.3, 30]"),
@@ -162,6 +167,7 @@ METHODS_BINW = [
 ]
 BINW_OVERRIDE = {
     "binw-bnsf800-perbin": ("npe-gibbs-bnsf800-lofihifi", "ep800_binw"),
+    "binw-bnsf600-perbin": ("npe-gibbs-bnsf800-lofihifi", "ep600_binw"),
     # A separate lineage from bnsf800: resumed from bnsf800-nolip, so it differs in the
     # encoder's Lipschitz constraint as well as in epochs. Same metric (d_eff 180).
     # bnsf1600-nolip's own ancestor at ep800: epoch-matched to bnsf800, so the pair

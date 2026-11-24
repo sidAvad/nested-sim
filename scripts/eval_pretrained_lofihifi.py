@@ -304,11 +304,9 @@ def main():
         from mdn_flow import WPassthrough, ConditionalMDN, ResBlock  # noqa: E402
         for _c in (WPassthrough, ConditionalMDN, ResBlock):
             setattr(sys.modules["__main__"], _c.__name__, _c)
-        gibbs_ckpt = eg.resolve_gibbs_ckpt(run)
+        gibbs_ckpt = eg.resolve_gibbs_ckpt(run, a.gibbs_epoch)
         if a.gibbs_epoch:
             gibbs_ckpt = gibbs_ckpt / f"epoch{a.gibbs_epoch:04d}"
-            if not gibbs_ckpt.exists():
-                raise SystemExit(f"no checkpoint at {gibbs_ckpt}")
         print(f"  gibbs ckpt {gibbs_ckpt}")
         enc, flow, wemb, _, _ = eg.load_gibbs_models(gibbs_ckpt, device)
         w_for = lambda s_: clamp_w_to_window(  # noqa: E731

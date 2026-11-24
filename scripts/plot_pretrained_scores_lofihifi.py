@@ -139,6 +139,38 @@ NOISE_OVERRIDE = {
     "noise-lr29full-ep400": ("npe-gibbs-lr29full-lofihifi", "ep400"),
     "noise-lr29full-ep800": ("npe-gibbs-lr29full-lofihifi", "ep800"),
 }
+# Per-bin-w roster. Each Gibbs arm appears twice -- once at the per-level calibrated
+# scalar w, once with w_i read off the case's Prv-max bin (percase_w_binned_realpt.npz,
+# d_eff 180, anchored so the harmonic mean reproduces the scalar) -- so the pair isolates
+# what conditioning w on the observation buys, with weights and cases held fixed. The
+# bnsf arms train on the real-patient metric with window [0.755, 75.5] and clamp 34.6% /
+# 41.9% of the per-bin w; the two ep400 arms from the [0.3, 30] window clamp none, which
+# is what makes the four-arm comparison able to separate clamping from the lever itself.
+# Per-bin w is defined from a residual, so the lofi panel carries only the scalar rows.
+METHODS_BINW = [
+    ("binw-bnsf400-single", "Gibbs NSF ep400, real-pt metric, scalar w"),
+    ("binw-bnsf400-perbin", "Gibbs NSF ep400, real-pt metric, per-bin w"),
+    ("binw-bnsf800-single", "Gibbs NSF ep800, real-pt metric, scalar w"),
+    ("binw-bnsf800-perbin", "Gibbs NSF ep800, real-pt metric, per-bin w"),
+    ("binw-control-single", "Gibbs NSF ep400, window [0.3, 30], scalar w"),
+    ("binw-control-perbin", "Gibbs NSF ep400, window [0.3, 30], per-bin w"),
+    ("binw-film-single", "Gibbs NSF ep400, rank-32 Sigma_c + FiLM, scalar w"),
+    ("binw-film-perbin", "Gibbs NSF ep400, rank-32 Sigma_c + FiLM, per-bin w"),
+    ("sun-routeA-lofihifi", "Sun et al. Route A MDN (beta per level: 1/0.14/0.10)"),
+    ("spin-pathD-lofihifi", "SPIN dual-flow, Path D"),
+    ("npe-noise-lofihifi", "NPE + 11dB noise"),
+    ("npe-baseline-lofihifi", "Vanilla NPE"),
+]
+BINW_OVERRIDE = {
+    "binw-bnsf400-single": ("npe-gibbs-bnsf400-lofihifi", "arch2x2"),
+    "binw-bnsf400-perbin": ("npe-gibbs-bnsf400-lofihifi", "ep400_binw"),
+    "binw-bnsf800-single": ("npe-gibbs-bnsf800-lofihifi", "arch2x2"),
+    "binw-bnsf800-perbin": ("npe-gibbs-bnsf800-lofihifi", "ep800_binw"),
+    "binw-control-single": ("npe-gibbs-realptcal-w03to30-lofihifi", "ep400"),
+    "binw-control-perbin": ("npe-gibbs-realptcal-w03to30-lofihifi", "ep400_binw"),
+    "binw-film-single": ("npe-gibbs-realptcal-r29film3e4-lofihifi", "ep400"),
+    "binw-film-perbin": ("npe-gibbs-realptcal-r29film3e4-lofihifi", "ep400_binw"),
+}
 SETS = [("lofi_test", "low-fi (no gap)", "#2a78d6"),
         ("hifi_v2_test", "high-fi realistic", "#eb6834"),
         ("hifi_v2strong_test", "high-fi exaggerated", "#1baf7a")]
@@ -405,7 +437,7 @@ def main():
     ap.add_argument("--suffix", default="scored")
     ap.add_argument("--metric", default="all", choices=["all", "scores", "zscore"])
     ap.add_argument("--roster", default="full",
-                    choices=["full", "percase", "arch", "noise"])
+                    choices=["full", "percase", "arch", "noise", "binw"])
     ap.add_argument("--out-sub", default="",
                     help="subfolder of scores_lofihifi to write into")
     a = ap.parse_args()
@@ -416,6 +448,8 @@ def main():
         METHODS, SUFFIX_OVERRIDE = METHODS_ARCH, ARCH_OVERRIDE
     elif a.roster == "noise":
         METHODS, SUFFIX_OVERRIDE = METHODS_NOISE, NOISE_OVERRIDE
+    elif a.roster == "binw":
+        METHODS, SUFFIX_OVERRIDE = METHODS_BINW, BINW_OVERRIDE
     if a.out_sub:
         OUT_DIR = OUT_DIR / a.out_sub
     rows = gather(a.suffix)

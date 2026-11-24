@@ -294,8 +294,11 @@ def main():
 
     if a.method.startswith("npe-gibbs"):
         import eval_gibbs_sweep as eg  # noqa: E402
-        from train_gibbs_npe import WEmbed  # noqa: E402
-        sys.modules["__main__"].WEmbed = WEmbed  # w_embed.pt pickled WEmbed from train_gibbs_npe's __main__
+        # w_embed.pt pickles whichever conditioner the run used, from train_gibbs_npe's
+        # __main__: WEmbed for --w-cond concat, WFiLM for --w-cond film.
+        from train_gibbs_npe import WEmbed, WFiLM  # noqa: E402
+        for _c in (WEmbed, WFiLM):
+            setattr(sys.modules["__main__"], _c.__name__, _c)
         # --flow-arch mdn pickles WPassthrough as its w_embed and a ConditionalMDN as its
         # flow, both from train_gibbs_npe's __main__, so both names must resolve here too
         from mdn_flow import WPassthrough, ConditionalMDN, ResBlock  # noqa: E402

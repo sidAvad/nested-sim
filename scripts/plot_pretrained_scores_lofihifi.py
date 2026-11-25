@@ -174,6 +174,25 @@ METHODS_BINW = [
     ("npe-noise-lofihifi", "NPE + 11dB noise"),
     ("npe-baseline-lofihifi", "Vanilla NPE"),
 ]
+# The same arms as BINW_OVERRIDE but evaluated at a single scalar w = 1.033, so the two
+# rosters differ in exactly one thing and a per-bin-vs-scalar comparison is like-for-like.
+# The four non-Gibbs methods are w-independent and resolve to their own directories.
+SCALAR_OVERRIDE = {
+    "binw-r32wide400-perbin": ("npe-gibbs-realptcal-r32wide-lofihifi", "w1033_ep400"),
+    "binw-r32wide-perbin": ("npe-gibbs-realptcal-r32wide-lofihifi", "w1033_ep500"),
+    "binw-r32wide600-perbin": ("npe-gibbs-realptcal-r32wide-lofihifi", "w1033_ep600"),
+    "binw-bnsf600-perbin": ("npe-gibbs-bnsf800-lofihifi", "w1033_ep600"),
+    "binw-bnsf800-perbin": ("npe-gibbs-bnsf800-lofihifi", "w1033_ep800"),
+    "binw-nolip800-perbin": ("npe-gibbs-800nolip-lofihifi", "w1033_ep800"),
+    "binw-bnsf1600-perbin": ("npe-gibbs-1600-lofihifi", "w1033_ep1600"),
+    "binw-lr3e4cos-perbin": ("npe-gibbs-realptcal-lr3e4cos400-lofihifi", "w1033_ep400"),
+    "binw-control-perbin": ("npe-gibbs-realptcal-w03to30-lofihifi", "w1033_ep600"),
+    "binw-film-perbin": ("npe-gibbs-realptcal-r29film3e4-lofihifi", "w1033_ep600"),
+    "binw-lr29full-perbin": ("npe-gibbs-lr29full-lofihifi", "w1033_ep800"),
+    "binw-v2realcal-perbin": ("npe-gibbs-v2realcal-lofihifi", "w1033_ep400"),
+}
+
+
 BINW_OVERRIDE = {
     "binw-r32wide400-perbin": ("npe-gibbs-realptcal-r32wide-lofihifi", "ep400_binwSig"),
     "binw-r32wide-perbin": ("npe-gibbs-realptcal-r32wide-lofihifi", "ep500_binwSig"),
@@ -460,7 +479,7 @@ def main():
     ap.add_argument("--suffix", default="scored")
     ap.add_argument("--metric", default="all", choices=["all", "scores", "zscore"])
     ap.add_argument("--roster", default="full",
-                    choices=["full", "percase", "arch", "noise", "binw"])
+                    choices=["full", "percase", "arch", "noise", "binw", "binwscalar"])
     ap.add_argument("--out-sub", default="",
                     help="subfolder of scores_lofihifi to write into")
     a = ap.parse_args()
@@ -471,6 +490,8 @@ def main():
         METHODS, SUFFIX_OVERRIDE = METHODS_ARCH, ARCH_OVERRIDE
     elif a.roster == "noise":
         METHODS, SUFFIX_OVERRIDE = METHODS_NOISE, NOISE_OVERRIDE
+    elif a.roster == "binwscalar":
+        METHODS, SUFFIX_OVERRIDE = METHODS_BINW, SCALAR_OVERRIDE
     elif a.roster == "binw":
         METHODS, SUFFIX_OVERRIDE = METHODS_BINW, BINW_OVERRIDE
     if a.out_sub:

@@ -148,6 +148,13 @@ NOISE_OVERRIDE = {
 # metric that defined phi, so each arm uses the one matching its own metric. Per-bin w is
 # defined from a residual, so the lofi panel carries no rows.
 METHODS_BINW = [
+    # Plateau/ratio-matched checkpoints, not final epochs: lr3e4cos400 ep400 is where its
+    # Laplace ratio flattens (-0.005 over 300->400), and r32wide ep500 (0.952) is ratio-
+    # matched to it and to bnsf800 ep600, isolating Sigma_c from training length. r32wide
+    # never plateaus -- by ep800 it is at 0.920, inside the exact band and past the point
+    # where the bnsf ladder went Pareto-dominated. See experiments.md.
+    ("binw-r32wide-perbin", "Gibbs NSF ep500, real-pt metric, rank-32 Sigma_c, wide window"),
+    ("binw-lr3e4cos-perbin", "Gibbs NSF ep400, real-pt metric, Sigma_c = I, lr 3e-4 cosine"),
     ("binw-bnsf800-perbin", "Gibbs NSF ep800, real-pt metric, Sigma_c = I"),
     # The one deliberate exception to one-row-per-model: ep600 sits on the hifi Pareto
     # frontier where ep800 is dominated, and its Laplace width ratio (MED inf 0.956 vs
@@ -166,6 +173,8 @@ METHODS_BINW = [
     ("npe-baseline-lofihifi", "Vanilla NPE"),
 ]
 BINW_OVERRIDE = {
+    "binw-r32wide-perbin": ("npe-gibbs-realptcal-r32wide-lofihifi", "ep500_binwSig"),
+    "binw-lr3e4cos-perbin": ("npe-gibbs-realptcal-lr3e4cos400-lofihifi", "ep400_binw"),
     "binw-bnsf800-perbin": ("npe-gibbs-bnsf800-lofihifi", "ep800_binw"),
     "binw-bnsf600-perbin": ("npe-gibbs-bnsf800-lofihifi", "ep600_binw"),
     # A separate lineage from bnsf800: resumed from bnsf800-nolip, so it differs in the

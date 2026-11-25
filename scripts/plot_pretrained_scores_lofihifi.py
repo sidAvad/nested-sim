@@ -153,7 +153,9 @@ METHODS_BINW = [
     # matched to it and to bnsf800 ep600, isolating Sigma_c from training length. r32wide
     # never plateaus -- by ep800 it is at 0.920, inside the exact band and past the point
     # where the bnsf ladder went Pareto-dominated. See experiments.md.
+    ("binw-r32wide400-perbin", "Gibbs NSF ep400, real-pt metric, rank-32 Sigma_c, wide window"),
     ("binw-r32wide-perbin", "Gibbs NSF ep500, real-pt metric, rank-32 Sigma_c, wide window"),
+    ("binw-r32wide600-perbin", "Gibbs NSF ep600, real-pt metric, rank-32 Sigma_c, wide window"),
     ("binw-lr3e4cos-perbin", "Gibbs NSF ep400, real-pt metric, Sigma_c = I, lr 3e-4 cosine"),
     ("binw-bnsf800-perbin", "Gibbs NSF ep800, real-pt metric, Sigma_c = I"),
     # The one deliberate exception to one-row-per-model: ep600 sits on the hifi Pareto
@@ -173,7 +175,9 @@ METHODS_BINW = [
     ("npe-baseline-lofihifi", "Vanilla NPE"),
 ]
 BINW_OVERRIDE = {
+    "binw-r32wide400-perbin": ("npe-gibbs-realptcal-r32wide-lofihifi", "ep400_binwSig"),
     "binw-r32wide-perbin": ("npe-gibbs-realptcal-r32wide-lofihifi", "ep500_binwSig"),
+    "binw-r32wide600-perbin": ("npe-gibbs-realptcal-r32wide-lofihifi", "ep600_binwSig"),
     "binw-lr3e4cos-perbin": ("npe-gibbs-realptcal-lr3e4cos400-lofihifi", "ep400_binw"),
     "binw-bnsf800-perbin": ("npe-gibbs-bnsf800-lofihifi", "ep800_binw"),
     "binw-bnsf600-perbin": ("npe-gibbs-bnsf800-lofihifi", "ep600_binw"),

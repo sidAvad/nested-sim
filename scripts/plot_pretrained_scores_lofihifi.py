@@ -163,6 +163,8 @@ METHODS_BINW = [
     # 0.943) is the closer of the two to the band the gold SMC puts the exact Gibbs
     # posterior in. See experiments.md.
     ("binw-bnsf600-perbin", "Gibbs NSF ep600, real-pt metric, Sigma_c = I"),
+    ("binw-nolip300-perbin", "Gibbs NSF ep300, real-pt metric, loose ceiling 10"),
+    ("binw-nolip400-perbin", "Gibbs NSF ep400, real-pt metric, loose ceiling 10"),
     ("binw-nolip800-perbin", "Gibbs NSF ep800, real-pt metric, no Lipschitz ceiling"),
     ("binw-bnsf1600-perbin", "Gibbs NSF ep1600, real-pt metric, no Lipschitz ceiling"),
     ("binw-control-perbin", "Gibbs NSF ep600, real-pt metric, window [0.3, 30]"),
@@ -189,6 +191,8 @@ REALW_OVERRIDE = {
     "binw-r32wide600-perbin": ("npe-gibbs-realptcal-r32wide-lofihifi", "wreal248_ep600"),
     "binw-bnsf600-perbin": ("npe-gibbs-bnsf800-lofihifi", "wreal248_ep600"),
     "binw-bnsf800-perbin": ("npe-gibbs-bnsf800-lofihifi", "wreal248_ep800"),
+    "binw-nolip300-perbin": ("npe-gibbs-400nolip-lofihifi", "wreal248_ep300"),
+    "binw-nolip400-perbin": ("npe-gibbs-400nolip-lofihifi", "wreal248_ep400"),
     "binw-nolip800-perbin": ("npe-gibbs-800nolip-lofihifi", "wreal248_ep800"),
     "binw-bnsf1600-perbin": ("npe-gibbs-1600-lofihifi", "wreal248_ep1600"),
     "binw-lr3e4cos-perbin": ("npe-gibbs-realptcal-lr3e4cos400-lofihifi", "wreal248_ep400"),
@@ -206,6 +210,8 @@ SCALAR_OVERRIDE = {
     "binw-r32wide600-perbin": ("npe-gibbs-realptcal-r32wide-lofihifi", "w1033_ep600"),
     "binw-bnsf600-perbin": ("npe-gibbs-bnsf800-lofihifi", "w1033_ep600"),
     "binw-bnsf800-perbin": ("npe-gibbs-bnsf800-lofihifi", "w1033_ep800"),
+    "binw-nolip300-perbin": ("npe-gibbs-400nolip-lofihifi", "w1033_ep300"),
+    "binw-nolip400-perbin": ("npe-gibbs-400nolip-lofihifi", "w1033_ep400"),
     "binw-nolip800-perbin": ("npe-gibbs-800nolip-lofihifi", "w1033_ep800"),
     "binw-bnsf1600-perbin": ("npe-gibbs-1600-lofihifi", "w1033_ep1600"),
     "binw-lr3e4cos-perbin": ("npe-gibbs-realptcal-lr3e4cos400-lofihifi", "w1033_ep400"),
@@ -227,6 +233,8 @@ BINW_OVERRIDE = {
     # encoder's Lipschitz constraint as well as in epochs. Same metric (d_eff 180).
     # bnsf1600-nolip's own ancestor at ep800: epoch-matched to bnsf800, so the pair
     # isolates the Lipschitz ceiling from the extra 800 epochs.
+    "binw-nolip300-perbin": ("npe-gibbs-400nolip-lofihifi", "ep300_binw"),
+    "binw-nolip400-perbin": ("npe-gibbs-400nolip-lofihifi", "ep400_binw"),
     "binw-nolip800-perbin": ("npe-gibbs-800nolip-lofihifi", "ep800_binw"),
     "binw-bnsf1600-perbin": ("npe-gibbs-1600-lofihifi", "ep1600_binw"),
     "binw-control-perbin": ("npe-gibbs-realptcal-w03to30-lofihifi", "ep600_binw"),

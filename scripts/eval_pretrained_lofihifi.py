@@ -131,6 +131,10 @@ METHODS = {
     "npe-gibbs-realptcal-r29film3e4-lofihifi": ("cv-dann-sbi", "exp-gibbs-realptcal-r29film3e4_nestedsim-lofi_cvdannsbi-bnsf800", None),
     # Sigma_c = I under the Sun-et-al-matched protocol (lr 3e-4 + cosine, 400 epochs,
     # patience 20). Patience never fired: best val is the final epoch.
+    # The nolip family at 400 epochs. "nolip" is sn-ceiling 10, not absent: the loose
+    # ceiling, against 2.0 for the constrained arms. Two timestamps exist; 20261111-090855
+    # is the complete one, so pass --ckpt-ts.
+    "npe-gibbs-400nolip-lofihifi": ("cv-dann-sbi", "exp-gibbs-baseline_nestedsim-lofi_cvdannsbi-bnsf400-nolip", None),
     "npe-gibbs-realptcal-lr3e4cos400-lofihifi": ("cv-dann-sbi", "exp-gibbs-realptcal-lr3e4cos400_nestedsim-lofi_cvdannsbi-bnsf400", None),
     # rank-32 Sigma_c (cor_r29_full_realpt, unprojected, refit at d_eff 180) on the
     # real-patient metric with the wide window: the one-variable test of the correction.

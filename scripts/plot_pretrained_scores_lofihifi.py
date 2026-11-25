@@ -163,8 +163,8 @@ METHODS_BINW = [
     # 0.943) is the closer of the two to the band the gold SMC puts the exact Gibbs
     # posterior in. See experiments.md.
     ("binw-bnsf600-perbin", "Gibbs NSF ep600, real-pt metric, Sigma_c = I"),
-    ("binw-nolip300-perbin", "Gibbs NSF ep300, real-pt metric, loose ceiling 10"),
-    ("binw-nolip400-perbin", "Gibbs NSF ep400, real-pt metric, loose ceiling 10"),
+    ("binw-nolip300-perbin", "Gibbs NSF ep300, real-pt metric, no Lipschitz ceiling"),
+    ("binw-nolip400-perbin", "Gibbs NSF ep400, real-pt metric, no Lipschitz ceiling"),
     ("binw-nolip800-perbin", "Gibbs NSF ep800, real-pt metric, no Lipschitz ceiling"),
     ("binw-bnsf1600-perbin", "Gibbs NSF ep1600, real-pt metric, no Lipschitz ceiling"),
     ("binw-control-perbin", "Gibbs NSF ep600, real-pt metric, window [0.3, 30]"),

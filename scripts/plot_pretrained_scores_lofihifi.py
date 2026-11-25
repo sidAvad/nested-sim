@@ -177,6 +177,29 @@ METHODS_BINW = [
 # The same arms as BINW_OVERRIDE but evaluated at a single scalar w = 1.033, so the two
 # rosters differ in exactly one thing and a per-bin-vs-scalar comparison is like-for-like.
 # The four non-Gibbs methods are w-independent and resolve to their own directories.
+# Deployment-faithful: ONE w for every level, the value a real deployment would actually
+# have. w = 2.48 is the real-patient NN estimate 7.5539 corrected for the NN estimator's
+# measured bias ratio 3.04 (range 2.18-2.89) -- no ground-truth theta anywhere, unlike the
+# per-level W_PER_SET. Route A gets the matched single beta = w / W_LOFI = 0.3283 so it
+# keeps no per-level tempering advantage. The three methods with no tempering knob (SPIN
+# Path D, NPE+noise, Vanilla NPE) are unaffected and resolve to their own directories.
+REALW_OVERRIDE = {
+    "binw-r32wide400-perbin": ("npe-gibbs-realptcal-r32wide-lofihifi", "wreal248_ep400"),
+    "binw-r32wide-perbin": ("npe-gibbs-realptcal-r32wide-lofihifi", "wreal248_ep500"),
+    "binw-r32wide600-perbin": ("npe-gibbs-realptcal-r32wide-lofihifi", "wreal248_ep600"),
+    "binw-bnsf600-perbin": ("npe-gibbs-bnsf800-lofihifi", "wreal248_ep600"),
+    "binw-bnsf800-perbin": ("npe-gibbs-bnsf800-lofihifi", "wreal248_ep800"),
+    "binw-nolip800-perbin": ("npe-gibbs-800nolip-lofihifi", "wreal248_ep800"),
+    "binw-bnsf1600-perbin": ("npe-gibbs-1600-lofihifi", "wreal248_ep1600"),
+    "binw-lr3e4cos-perbin": ("npe-gibbs-realptcal-lr3e4cos400-lofihifi", "wreal248_ep400"),
+    "binw-control-perbin": ("npe-gibbs-realptcal-w03to30-lofihifi", "wreal248_ep600"),
+    "binw-film-perbin": ("npe-gibbs-realptcal-r29film3e4-lofihifi", "wreal248_ep600"),
+    "binw-lr29full-perbin": ("npe-gibbs-lr29full-lofihifi", "wreal248_ep800"),
+    "binw-v2realcal-perbin": ("npe-gibbs-v2realcal-lofihifi", "wreal248_ep400"),
+    "sun-routeA-lofihifi": ("sun-routeA-lofihifi", "wreal248"),
+}
+
+
 SCALAR_OVERRIDE = {
     "binw-r32wide400-perbin": ("npe-gibbs-realptcal-r32wide-lofihifi", "w1033_ep400"),
     "binw-r32wide-perbin": ("npe-gibbs-realptcal-r32wide-lofihifi", "w1033_ep500"),
@@ -479,7 +502,8 @@ def main():
     ap.add_argument("--suffix", default="scored")
     ap.add_argument("--metric", default="all", choices=["all", "scores", "zscore"])
     ap.add_argument("--roster", default="full",
-                    choices=["full", "percase", "arch", "noise", "binw", "binwscalar"])
+                    choices=["full", "percase", "arch", "noise", "binw", "binwscalar",
+                             "realw"])
     ap.add_argument("--out-sub", default="",
                     help="subfolder of scores_lofihifi to write into")
     a = ap.parse_args()
@@ -490,6 +514,8 @@ def main():
         METHODS, SUFFIX_OVERRIDE = METHODS_ARCH, ARCH_OVERRIDE
     elif a.roster == "noise":
         METHODS, SUFFIX_OVERRIDE = METHODS_NOISE, NOISE_OVERRIDE
+    elif a.roster == "realw":
+        METHODS, SUFFIX_OVERRIDE = METHODS_BINW, REALW_OVERRIDE
     elif a.roster == "binwscalar":
         METHODS, SUFFIX_OVERRIDE = METHODS_BINW, SCALAR_OVERRIDE
     elif a.roster == "binw":

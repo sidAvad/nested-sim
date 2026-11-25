@@ -129,6 +129,12 @@ METHODS = {
     # --gibbs-epoch.
     "npe-gibbs-realptcal-w03to30-lofihifi": ("cv-dann-sbi", "exp-gibbs-realptcal-w03to30_nestedsim-lofi_cvdannsbi-bnsf800", None),
     "npe-gibbs-realptcal-r29film3e4-lofihifi": ("cv-dann-sbi", "exp-gibbs-realptcal-r29film3e4_nestedsim-lofi_cvdannsbi-bnsf800", None),
+    # Sigma_c = I under the Sun-et-al-matched protocol (lr 3e-4 + cosine, 400 epochs,
+    # patience 20). Patience never fired: best val is the final epoch.
+    "npe-gibbs-realptcal-lr3e4cos400-lofihifi": ("cv-dann-sbi", "exp-gibbs-realptcal-lr3e4cos400_nestedsim-lofi_cvdannsbi-bnsf400", None),
+    # rank-32 Sigma_c (cor_r29_full_realpt, unprojected, refit at d_eff 180) on the
+    # real-patient metric with the wide window: the one-variable test of the correction.
+    "npe-gibbs-realptcal-r32wide-lofihifi": ("cv-dann-sbi", "exp-gibbs-realptcal-r32wide_nestedsim-lofi_cvdannsbi-bnsf800", None),
 }
 
 # Per-level Gibbs tolerance, from the truth-anchored calibration (2026-11-16): one lofi
